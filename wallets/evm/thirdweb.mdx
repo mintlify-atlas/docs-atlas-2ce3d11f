@@ -1,0 +1,650 @@
+---
+title: Thirdweb
+description: Complete web3 development platform with embedded wallets, smart contracts, and multi-chain support
+---
+
+# Thirdweb
+
+<Card title="Official Documentation" icon="book" href="https://portal.thirdweb.com">
+  Visit the official Thirdweb documentation
+</Card>
+
+## Overview
+
+Thirdweb is a **complete web3 development platform** that goes beyond wallet connections. It provides tools for smart contract deployment, embedded wallets, NFT management, token creation, gasless transactions, and account abstraction - all in one unified SDK.
+
+**Best for**: Teams building full-stack web3 applications that need comprehensive tooling beyond just wallet connections.
+
+## Key Features
+
+- **Complete Platform** - Wallet connections, contracts, NFTs, tokens, and more
+- **Embedded Wallets** - Email and social login with auto-created wallets
+- **Multi-Chain Support** - EVM and Solana chains
+- **Smart Contract Tools** - Deploy and interact with contracts
+- **Account Abstraction** - Gasless transactions and smart accounts
+- **NFT & Token Tools** - Mint, manage, and trade digital assets
+- **In-App Purchases** - Fiat on-ramps integrated
+- **Self-Contained SDK** - No additional chain dependencies needed
+- **TypeScript First** - Excellent type safety and DX
+
+## Installation
+
+Scaffold a new project with Thirdweb:
+
+<CodeGroup>
+```bash npm
+npx create-nextjs-dapp my-dapp --chain evm --wallet thirdweb
+```
+
+```bash yarn
+yarn create nextjs-dapp my-dapp --chain evm --wallet thirdweb
+```
+
+```bash pnpm
+pnpm create nextjs-dapp my-dapp --chain evm --wallet thirdweb
+```
+
+```bash bun
+bunx create-nextjs-dapp my-dapp --chain evm --wallet thirdweb
+```
+</CodeGroup>
+
+### Dependencies
+
+The CLI installs these packages:
+
+```json package.json
+{
+  "dependencies": {
+    "thirdweb": "^5.80.0",
+    "@tanstack/react-query": "^5.0.0"
+  }
+}
+```
+
+<Note>
+  Thirdweb's SDK is **self-contained** - you don't need separate wagmi, viem, or @solana/web3.js packages. Everything is included.
+</Note>
+
+## Configuration
+
+### Environment Variables
+
+Create a `.env.local` file:
+
+```bash .env.local
+NEXT_PUBLIC_THIRDWEB_CLIENT_ID=your_client_id_here
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
+```
+
+<Steps>
+  <Step title="Get a Thirdweb Client ID">
+    1. Visit [Thirdweb Dashboard](https://thirdweb.com/dashboard)
+    2. Sign up or log in
+    3. Go to **Settings** > **API Keys**
+    4. Create a new API key
+    5. Copy the **Client ID** (not the Secret Key)
+  </Step>
+  
+  <Step title="Configure Project Settings">
+    In the Thirdweb Dashboard:
+    - Add your domain to allowed domains
+    - Configure authentication methods
+    - Set up billing (free tier available)
+  </Step>
+  
+  <Step title="Add to your .env.local">
+    ```bash
+    NEXT_PUBLIC_THIRDWEB_CLIENT_ID=abc123...
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  The Thirdweb Client ID is **required** for production. Without it, your app will use rate-limited public endpoints.
+</Warning>
+
+### Client Setup
+
+The CLI generates a `lib/client.ts` file:
+
+```tsx lib/client.ts
+import { createThirdwebClient } from "thirdweb";
+
+const clientId = process.env.NEXT_PUBLIC_THIRDWEB_CLIENT_ID || "";
+
+if (!clientId) {
+  console.warn(
+    "Missing NEXT_PUBLIC_THIRDWEB_CLIENT_ID. Get one at https://thirdweb.com/dashboard"
+  );
+}
+
+export const client = createThirdwebClient({
+  clientId,
+});
+```
+
+### Provider Setup
+
+The CLI generates a minimal `Providers.tsx` component:
+
+```tsx components/Providers.tsx
+"use client";
+
+import { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ThirdwebProvider } from "thirdweb/react";
+import { ThemeProvider } from "next-themes";
+
+// Client is created in lib/client.ts
+import "../lib/client";
+
+const queryClient = new QueryClient();
+
+const Providers = ({ children }: { children: ReactNode }) => {
+  return (
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <ThirdwebProvider>
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      </ThirdwebProvider>
+    </ThemeProvider>
+  );
+};
+
+export { Providers };
+```
+
+## Usage
+
+### Connect Button
+
+The CLI generates a Header with Thirdweb's `ConnectButton`:
+
+```tsx components/Header.tsx
+"use client";
+
+import { ConnectButton } from "thirdweb/react";
+import { sepolia } from "thirdweb/chains";
+import { ThemeToggle } from "./ThemeToggle";
+import { client } from "../lib/client";
+
+const Header = () => {
+  return (
+    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
+      <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">web3_starter</span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <ConnectButton client={client} chain={sepolia} />
+        </div>
+      </div>
+    </header>
+  );
+};
+
+export { Header };
+```
+
+### Thirdweb Hooks
+
+Use Thirdweb's React hooks:
+
+```tsx
+import { useActiveAccount, useActiveWallet } from "thirdweb/react";
+
+const MyComponent = () => {
+  const account = useActiveAccount();
+  const wallet = useActiveWallet();
+
+  return (
+    <div>
+      {account ? (
+        <div>
+          <p>Connected: {account.address}</p>
+          <p>Wallet: {wallet?.id}</p>
+        </div>
+      ) : (
+        <p>Please connect your wallet</p>
+      )}
+    </div>
+  );
+};
+```
+
+### Reading Contracts
+
+Read data from smart contracts:
+
+```tsx
+import { useReadContract } from "thirdweb/react";
+import { getContract } from "thirdweb";
+import { sepolia } from "thirdweb/chains";
+import { client } from "../lib/client";
+
+const contract = getContract({
+  client,
+  chain: sepolia,
+  address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
+});
+
+const MyComponent = () => {
+  const { data: greeting, isLoading } = useReadContract({
+    contract,
+    method: "function greeting() view returns (string)",
+  });
+
+  if (isLoading) return <p>Loading...</p>;
+
+  return <p>Greeting: {greeting}</p>;
+};
+```
+
+### Writing to Contracts
+
+Send transactions to smart contracts:
+
+```tsx
+import { useSendTransaction } from "thirdweb/react";
+import { prepareContractCall } from "thirdweb";
+import { getContract } from "thirdweb";
+import { sepolia } from "thirdweb/chains";
+import { client } from "../lib/client";
+
+const contract = getContract({
+  client,
+  chain: sepolia,
+  address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!,
+});
+
+const MyComponent = () => {
+  const { mutate: sendTransaction, isPending } = useSendTransaction();
+
+  const handleUpdate = () => {
+    const transaction = prepareContractCall({
+      contract,
+      method: "function setGreeting(string memory _greeting)",
+      params: ["Hello from Thirdweb!"],
+    });
+
+    sendTransaction(transaction);
+  };
+
+  return (
+    <button onClick={handleUpdate} disabled={isPending}>
+      {isPending ? "Updating..." : "Update Greeting"}
+    </button>
+  );
+};
+```
+
+### Account Information
+
+Get detailed account information:
+
+```tsx
+import { useActiveAccount, useWalletBalance } from "thirdweb/react";
+import { sepolia } from "thirdweb/chains";
+import { client } from "../lib/client";
+
+const AccountInfo = () => {
+  const account = useActiveAccount();
+  
+  const { data: balance } = useWalletBalance({
+    client,
+    chain: sepolia,
+    address: account?.address,
+  });
+
+  if (!account) return null;
+
+  return (
+    <div>
+      <p>Address: {account.address}</p>
+      <p>Balance: {balance?.displayValue} {balance?.symbol}</p>
+    </div>
+  );
+};
+```
+
+## Customization
+
+### Custom Connect Button
+
+Customize the connect button appearance:
+
+```tsx
+import { ConnectButton } from "thirdweb/react";
+
+<ConnectButton
+  client={client}
+  chain={sepolia}
+  theme="dark"
+  connectButton={{
+    label: "Sign In",
+    style: {
+      background: "#7b3fe4",
+      color: "white",
+    },
+  }}
+  connectModal={{
+    size: "compact",
+    title: "Connect to My dApp",
+    welcomeScreen: {
+      title: "Welcome!",
+      subtitle: "Connect your wallet to get started",
+    },
+  }}
+/>
+```
+
+### Multi-Chain Support
+
+Support multiple chains:
+
+```tsx
+import { mainnet, polygon, optimism, arbitrum, sepolia } from "thirdweb/chains";
+
+const chains = [mainnet, polygon, optimism, arbitrum, sepolia];
+
+<ConnectButton
+  client={client}
+  chains={chains}  // User can switch between chains
+/>
+```
+
+### Embedded Wallets
+
+Enable email/social login:
+
+```tsx
+import { ConnectButton } from "thirdweb/react";
+
+<ConnectButton
+  client={client}
+  chain={sepolia}
+  connectModal={{
+    showThirdwebBranding: false,
+  }}
+  wallets={[
+    "io.metamask",
+    "com.coinbase.wallet",
+    "embedded",  // Enables email/social login
+  ]}
+/>
+```
+
+### Account Abstraction
+
+Use smart accounts for gasless transactions:
+
+```tsx
+import { ConnectButton } from "thirdweb/react";
+
+<ConnectButton
+  client={client}
+  chain={sepolia}
+  accountAbstraction={{
+    chain: sepolia,
+    sponsorGas: true,  // Sponsor gas fees
+  }}
+/>
+```
+
+### Custom Theme
+
+Create a fully custom theme:
+
+```tsx
+import { ConnectButton, darkTheme } from "thirdweb/react";
+
+const customTheme = darkTheme({
+  colors: {
+    modalBg: "#000000",
+    accentText: "#7b3fe4",
+    primaryButtonBg: "#7b3fe4",
+  },
+});
+
+<ConnectButton
+  client={client}
+  chain={sepolia}
+  theme={customTheme}
+/>
+```
+
+## Advanced Features
+
+### Deploy Contracts
+
+Deploy contracts directly from your app:
+
+```tsx
+import { deployContract } from "thirdweb";
+import { sepolia } from "thirdweb/chains";
+import { client } from "../lib/client";
+
+const deployMyContract = async () => {
+  const contractAddress = await deployContract({
+    client,
+    chain: sepolia,
+    abi: [...],  // Your contract ABI
+    bytecode: "0x...",  // Your contract bytecode
+    constructorParams: [],
+  });
+  
+  console.log("Deployed to:", contractAddress);
+};
+```
+
+### NFT Minting
+
+Mint NFTs with Thirdweb:
+
+```tsx
+import { useNFT, useContract } from "thirdweb/react";
+
+const NFTComponent = () => {
+  const contract = useContract("0x...");
+  const { data: nft } = useNFT(contract, "0");
+
+  return (
+    <div>
+      <img src={nft?.metadata.image} alt={nft?.metadata.name} />
+      <p>{nft?.metadata.name}</p>
+    </div>
+  );
+};
+```
+
+### IPFS Storage
+
+Upload files to IPFS:
+
+```tsx
+import { upload } from "thirdweb/storage";
+import { client } from "../lib/client";
+
+const uploadFile = async (file: File) => {
+  const uri = await upload({
+    client,
+    files: [file],
+  });
+  
+  console.log("Uploaded to:", uri);
+  return uri;
+};
+```
+
+## API Reference
+
+### Official Documentation
+
+<CardGroup cols={2}>
+  <Card title="Thirdweb Docs" icon="book" href="https://portal.thirdweb.com">
+    Complete Thirdweb documentation
+  </Card>
+  <Card title="Thirdweb Dashboard" icon="gauge" href="https://thirdweb.com/dashboard">
+    Manage API keys and settings
+  </Card>
+  <Card title="Contract Explorer" icon="magnifying-glass" href="https://thirdweb.com/explore">
+    Browse deployed contracts
+  </Card>
+  <Card title="SDK Reference" icon="code" href="https://portal.thirdweb.com/typescript/v5">
+    TypeScript SDK reference
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Client ID Missing
+
+**Issue**: Console warning about missing Client ID
+
+**Solution**:
+1. Get a Client ID from [Thirdweb Dashboard](https://thirdweb.com/dashboard)
+2. Go to Settings > API Keys
+3. Create a new API key
+4. Copy the **Client ID** (not Secret Key)
+5. Add to `.env.local`:
+   ```bash
+   NEXT_PUBLIC_THIRDWEB_CLIENT_ID=abc123...
+   ```
+6. Restart dev server
+
+### Rate Limiting
+
+**Issue**: "Rate limit exceeded" errors
+
+**Solution**: 
+- Set your Client ID in `.env.local`
+- Without a Client ID, you're using public rate-limited endpoints
+- Free tier includes generous limits
+
+### Connect Button Not Working
+
+**Issue**: Connect button doesn't open modal
+
+**Solution**:
+1. Verify `ThirdwebProvider` wraps your app
+2. Ensure client is created correctly
+3. Check that component is client-side (`"use client"`)
+4. Verify Client ID is valid
+
+### Contract Interaction Fails
+
+**Issue**: Contract reads/writes fail
+
+**Solution**:
+1. Verify contract address is correct
+2. Check that chain matches where contract is deployed
+3. Ensure wallet is connected
+4. Verify contract ABI is correct
+5. Check that function signature matches:
+   ```tsx
+   method: "function greeting() view returns (string)"  // Exact signature
+   ```
+
+### SSR Errors
+
+**Issue**: Server-side rendering errors
+
+**Solution**:
+1. Use `"use client"` directive
+2. Wrap Thirdweb hooks in client components
+3. Check for window/document usage
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use the Dashboard">
+    Leverage Thirdweb Dashboard for:
+    - Deploying contracts without code
+    - Managing API keys
+    - Viewing analytics
+    - Testing contract functions
+  </Accordion>
+  
+  <Accordion title="Centralize Client">
+    Create client once and import it:
+    
+    ```tsx
+    // lib/client.ts
+    export const client = createThirdwebClient({ clientId });
+    
+    // Use everywhere
+    import { client } from "@/lib/client";
+    ```
+  </Accordion>
+  
+  <Accordion title="Type-Safe Contracts">
+    Generate TypeScript types from your contracts:
+    
+    ```bash
+    npx thirdweb generate
+    ```
+    
+    This creates type-safe contract hooks.
+  </Accordion>
+  
+  <Accordion title="Gasless Transactions">
+    Use account abstraction for better UX:
+    
+    ```tsx
+    <ConnectButton
+      accountAbstraction={{
+        chain: sepolia,
+        sponsorGas: true,
+      }}
+    />
+    ```
+  </Accordion>
+  
+  <Accordion title="IPFS for Assets">
+    Use Thirdweb's IPFS gateway for decentralized storage:
+    
+    ```tsx
+    import { upload } from "thirdweb/storage";
+    
+    const uri = await upload({ client, files: [file] });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Why Choose Thirdweb?
+
+<CardGroup cols={2}>
+  <Card title="All-in-One Platform" icon="layer-group">
+    Wallets, contracts, NFTs, storage - everything you need in one SDK
+  </Card>
+  <Card title="Self-Contained" icon="box">
+    No need for separate wagmi, viem, or ethers packages
+  </Card>
+  <Card title="Account Abstraction" icon="shield">
+    Built-in support for gasless transactions and smart accounts
+  </Card>
+  <Card title="Extensive Tooling" icon="wrench">
+    Dashboard, CLI, SDKs, and pre-built contracts
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Chain Configuration" icon="link" href="/config/chains">
+    Configure different blockchain networks
+  </Card>
+  <Card title="Project Structure" icon="folder" href="/guides/project-structure">
+    Understand the generated project structure
+  </Card>
+  <Card title="Environment Variables" icon="key" href="/guides/environment-variables">
+    Learn about environment configuration
+  </Card>
+  <Card title="Deployment" icon="rocket" href="/guides/deployment">
+    Deploy your dApp to production
+  </Card>
+</CardGroup>

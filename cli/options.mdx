@@ -1,0 +1,260 @@
+---
+title: 'CLI Options'
+description: 'Complete reference for all command-line flags and options'
+---
+
+## Overview
+
+The `create-nextjs-dapp` CLI supports various options to customize project creation. Options can be provided in short form (single dash) or long form (double dash).
+
+## Project Configuration
+
+### Chain Selection
+
+<ParamField path="--chain" type="string">
+  Specify the blockchain platform for your dApp.
+  
+  **Alias:** `-c`
+  
+  **Valid values:** `evm`, `solana`
+  
+  **Default:** `evm` (when using `--yes` flag)
+  
+  **Example:**
+  ```bash
+  npx create-nextjs-dapp my-dapp --chain solana
+  npx create-nextjs-dapp my-dapp -c evm
+  ```
+</ParamField>
+
+<AccordionGroup>
+  <Accordion title="Available Chains">
+    - **`evm`** - Ethereum Virtual Machine (Ethereum, Polygon, Base, Arbitrum, Optimism, etc.)
+    - **`solana`** - Solana blockchain
+  </Accordion>
+</AccordionGroup>
+
+### Wallet Provider
+
+<ParamField path="--wallet" type="string">
+  Specify the wallet connection library/provider to use.
+  
+  **Alias:** `-w`
+  
+  **Valid values:** Depends on selected chain (see below)
+  
+  **Default:** First available provider for the selected chain
+  
+  **Example:**
+  ```bash
+  npx create-nextjs-dapp my-dapp --wallet rainbowkit
+  npx create-nextjs-dapp my-dapp -w dynamic
+  ```
+</ParamField>
+
+<AccordionGroup>
+  <Accordion title="EVM Wallet Providers">
+    - **`rainbowkit`** - RainbowKit (recommended for EVM)
+    - **`connectkit`** - ConnectKit
+    - **`privy`** - Privy (supports both EVM and Solana)
+    - **`dynamic`** - Dynamic (supports both EVM and Solana)
+    - **`reown`** - Reown/AppKit (formerly Web3Modal)
+    - **`thirdweb`** - Thirdweb (supports both EVM and Solana)
+    - **`getpara`** - GetPara/Capsule
+  </Accordion>
+  
+  <Accordion title="Solana Wallet Providers">
+    - **`wallet-adapter`** - Solana Wallet Adapter (recommended for Solana)
+    - **`privy`** - Privy (supports both EVM and Solana)
+    - **`dynamic`** - Dynamic (supports both EVM and Solana)
+    - **`reown`** - Reown/AppKit
+    - **`thirdweb`** - Thirdweb (supports both EVM and Solana)
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+The CLI validates that your selected wallet provider is compatible with your chosen chain. If you specify an incompatible combination in non-interactive mode, the CLI will exit with an error.
+</Warning>
+
+## Automation Flags
+
+### Skip Prompts
+
+<ParamField path="--yes" type="boolean">
+  Skip all interactive prompts and use default values for any unspecified options.
+  
+  **Alias:** `-y`
+  
+  **Default:** `false`
+  
+  **Defaults used:**
+  - Project name: `my-dapp`
+  - Chain: `evm`
+  - Wallet: First available provider for selected chain
+  
+  **Example:**
+  ```bash
+  npx create-nextjs-dapp --yes
+  npx create-nextjs-dapp my-app -y --chain solana
+  ```
+</ParamField>
+
+<Note>
+In non-interactive mode (`--yes`), the CLI will exit with an error if the target directory contains conflicting files, rather than prompting to overwrite.
+</Note>
+
+### Initialize Git Repository
+
+<ParamField path="--git" type="boolean">
+  Initialize a git repository in the project directory and create an initial commit.
+  
+  **Default:** `false`
+  
+  **Example:**
+  ```bash
+  npx create-nextjs-dapp my-dapp --git
+  ```
+</ParamField>
+
+### Install Dependencies
+
+<ParamField path="--install" type="boolean">
+  Automatically install project dependencies after scaffolding.
+  
+  **Default:** `false`
+  
+  **Example:**
+  ```bash
+  npx create-nextjs-dapp my-dapp --install
+  npx create-nextjs-dapp my-dapp --install --git
+  ```
+</ParamField>
+
+## Package Manager Options
+
+By default, the CLI detects your package manager based on how you invoke it. You can override this with the following flags:
+
+<ParamField path="--use-npm" type="boolean">
+  Force the use of npm as the package manager.
+  
+  **Example:**
+  ```bash
+  npx create-nextjs-dapp my-dapp --use-npm
+  ```
+</ParamField>
+
+<ParamField path="--use-yarn" type="boolean">
+  Force the use of yarn as the package manager.
+  
+  **Example:**
+  ```bash
+  npx create-nextjs-dapp my-dapp --use-yarn
+  ```
+</ParamField>
+
+<ParamField path="--use-pnpm" type="boolean">
+  Force the use of pnpm as the package manager.
+  
+  **Example:**
+  ```bash
+  npx create-nextjs-dapp my-dapp --use-pnpm
+  ```
+</ParamField>
+
+<ParamField path="--use-bun" type="boolean">
+  Force the use of bun as the package manager.
+  
+  **Example:**
+  ```bash
+  npx create-nextjs-dapp my-dapp --use-bun
+  ```
+</ParamField>
+
+<Info>
+Package manager flags are mutually exclusive. If you specify multiple, the last one will be used.
+</Info>
+
+## Utility Options
+
+### Help
+
+<ParamField path="--help" type="boolean">
+  Display the help message with all available options and examples.
+  
+  **Alias:** `-h`
+  
+  **Example:**
+  ```bash
+  npx create-nextjs-dapp --help
+  npx create-nextjs-dapp -h
+  ```
+</ParamField>
+
+### Version
+
+<ParamField path="--version" type="boolean">
+  Display the current version of create-nextjs-dapp.
+  
+  **Alias:** `-v`
+  
+  **Example:**
+  ```bash
+  npx create-nextjs-dapp --version
+  npx create-nextjs-dapp -v
+  ```
+  
+  **Output:**
+  ```bash
+  create-nextjs-dapp v1.0.0
+  ```
+</ParamField>
+
+## Option Formats
+
+Options can be specified in multiple formats:
+
+### Space-separated
+
+```bash
+npx create-nextjs-dapp my-dapp --chain evm --wallet rainbowkit
+```
+
+### Equals sign
+
+```bash
+npx create-nextjs-dapp my-dapp --chain=evm --wallet=rainbowkit
+```
+
+### Short form
+
+```bash
+npx create-nextjs-dapp my-dapp -c evm -w rainbowkit
+```
+
+### Mixed
+
+```bash
+npx create-nextjs-dapp my-dapp -c evm --wallet=rainbowkit --yes
+```
+
+## Project Name Validation
+
+The project name (whether specified as an argument or entered interactively) must follow npm package naming rules:
+
+<Check>
+  **Valid project names:**
+  - Lowercase letters, numbers, hyphens, underscores
+  - Cannot start with a dot or underscore
+  - No spaces or special characters
+  - Examples: `my-dapp`, `my_dapp`, `mydapp123`
+</Check>
+
+<Warning>
+  **Invalid project names:**
+  - Uppercase letters: `MyDapp` ❌
+  - Spaces: `my dapp` ❌
+  - Starting with dot: `.mydapp` ❌
+  - Special characters: `my@dapp`, `my$dapp` ❌
+</Warning>
+
+If an invalid name is provided, the CLI will exit with a clear error message explaining what's wrong.

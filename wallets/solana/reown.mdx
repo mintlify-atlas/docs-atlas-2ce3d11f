@@ -1,0 +1,589 @@
+---
+title: Reown AppKit (Solana)
+description: WalletConnect's official SDK for Solana (formerly Web3Modal)
+---
+
+## Overview
+
+[Reown AppKit](https://reown.com/appkit) (formerly known as Web3Modal and WalletConnect) is the official SDK from the WalletConnect team. It provides a beautiful, customizable wallet connection modal with support for Solana wallets, including mobile wallets via WalletConnect protocol.
+
+**Best for**: Applications that need professional wallet UX with mobile wallet support via WalletConnect.
+
+## Key Features
+
+- **WalletConnect Integration**: Connect mobile wallets by scanning QR codes
+- **Beautiful UI**: Polished, professional wallet connection modal
+- **Wide Wallet Support**: Phantom, Solflare, and all WalletConnect-compatible Solana wallets
+- **Network Switching**: Built-in network selection (mainnet, devnet, testnet)
+- **Mobile-First**: Optimized for mobile wallet connections
+- **Account Management**: Built-in account info and disconnect UI
+- **Theme Customization**: Light/dark modes and custom styling
+- **Analytics**: Built-in usage analytics (optional)
+
+## Installation
+
+Scaffold a new project with Reown AppKit:
+
+```bash
+npx create-nextjs-dapp@latest
+```
+
+When prompted:
+1. Choose **Solana** as your blockchain
+2. Select **Reown (AppKit)** as your wallet provider
+
+### Dependencies Installed
+
+The CLI automatically installs:
+
+```json
+{
+  "@solana/web3.js": "^1.98.0",
+  "@solana/wallet-adapter-react": "^0.15.35",
+  "@solana/wallet-adapter-react-ui": "^0.9.35",
+  "@solana/wallet-adapter-wallets": "^0.19.32",
+  "@reown/appkit": "^1.6.1",
+  "@reown/appkit-adapter-solana": "^1.6.1"
+}
+```
+
+## Configuration
+
+### Get Your Reown Project ID
+
+1. Go to [https://cloud.reown.com](https://cloud.reown.com)
+2. Sign up or log in
+3. Create a new project
+4. Copy your Project ID from the dashboard
+
+### Environment Variables
+
+Add to `.env.local`:
+
+```bash
+# Reown Project ID (required)
+NEXT_PUBLIC_REOWN_PROJECT_ID=your_project_id_here
+
+# Program configuration (optional)
+NEXT_PUBLIC_PROGRAM_ID=YourProgramAddressHere
+```
+
+### Provider Setup
+
+The generated `components/Providers.tsx` initializes AppKit:
+
+```tsx
+"use client";
+
+import { ReactNode, useState, useEffect } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createAppKit } from "@reown/appkit/react";
+import { SolanaAdapter } from "@reown/appkit-adapter-solana";
+import {
+  PhantomWalletAdapter,
+  SolflareWalletAdapter,
+} from "@solana/wallet-adapter-wallets";
+import { solana, solanaDevnet } from "@reown/appkit/networks";
+import { ThemeProvider } from "next-themes";
+
+const queryClient = new QueryClient();
+
+const projectId = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID || "";
+
+let isAppKitInitialized = false;
+
+function initializeAppKit() {
+  if (isAppKitInitialized || !projectId) return;
+
+  const solanaAdapter = new SolanaAdapter({
+    wallets: [new PhantomWalletAdapter(), new SolflareWalletAdapter()],
+  });
+
+  createAppKit({
+    adapters: [solanaAdapter],
+    networks: [solanaDevnet, solana],
+    projectId,
+    features: {
+      analytics: true,
+    },
+    themeMode: "dark",
+  });
+
+  isAppKitInitialized = true;
+}
+
+const Providers = ({ children }: { children: ReactNode }) => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    if (!projectId) {
+      console.warn(
+        "Missing NEXT_PUBLIC_REOWN_PROJECT_ID. Get one at https://cloud.reown.com/"
+      );
+    } else {
+      initializeAppKit();
+    }
+    setMounted(true);
+  }, []);
+
+  if (!projectId) {
+    return (
+      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center p-6 border border-border">
+            <p className="text-muted-foreground mb-2">Missing configuration</p>
+            <p className="text-sm text-muted-foreground">
+              Add NEXT_PUBLIC_REOWN_PROJECT_ID to your .env file
+            </p>
+          </div>
+        </div>
+      </ThemeProvider>
+    );
+  }
+
+  if (!mounted) {
+    return (
+      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+        <div className="min-h-screen" />
+      </ThemeProvider>
+    );
+  }
+
+  return (
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </ThemeProvider>
+  );
+};
+
+export { Providers };
+```
+
+## Usage
+
+### Connect Button
+
+Use AppKit's built-in button components:
+
+```tsx
+"use client";
+
+import { useAppKit, useAppKitAccount } from "@reown/appkit/react";
+
+const Header = () => {
+  return (
+    <header>
+      <appkit-button />
+    </header>
+  );
+};
+
+export { Header };
+```
+
+### Access Connected Wallet
+
+Use AppKit hooks to get wallet information:
+
+```tsx
+"use client";
+
+import { useAppKitAccount, useAppKit } from "@reown/appkit/react";
+import { Connection, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { useEffect, useState } from "react";
+
+const connection = new Connection("https://api.devnet.solana.com");
+
+const WalletStatus = () => {
+  const { address, isConnected } = useAppKitAccount();
+  const { open } = useAppKit();
+  const [balance, setBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (address && isConnected) {
+      const pubkey = new PublicKey(address);
+      connection
+        .getBalance(pubkey)
+        .then((bal) => setBalance(bal / LAMPORTS_PER_SOL))
+        .catch(console.error);
+    }
+  }, [address, isConnected]);
+
+  if (!isConnected) {
+    return <button onClick={() => open()}>Connect Wallet</button>;
+  }
+
+  return (
+    <div>
+      <p>Address: {address}</p>
+      <p>Balance: {balance?.toFixed(4)} SOL</p>
+    </div>
+  );
+};
+```
+
+### Sign and Send Transactions
+
+Sign transactions using AppKit's provider:
+
+```tsx
+import { useAppKitAccount, useAppKitProvider } from "@reown/appkit/react";
+import {
+  Connection,
+  Transaction,
+  SystemProgram,
+  PublicKey,
+  LAMPORTS_PER_SOL,
+} from "@solana/web3.js";
+
+const SendSol = () => {
+  const { address, isConnected } = useAppKitAccount();
+  const { walletProvider } = useAppKitProvider("solana");
+  const connection = new Connection("https://api.devnet.solana.com");
+
+  const handleSend = async () => {
+    if (!isConnected || !address || !walletProvider) return;
+
+    const transaction = new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: new PublicKey(address),
+        toPubkey: new PublicKey("recipient address"),
+        lamports: 0.1 * LAMPORTS_PER_SOL,
+      })
+    );
+
+    // Get recent blockhash
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = new PublicKey(address);
+
+    // Sign and send
+    const signedTx = await walletProvider.signTransaction(transaction);
+    const signature = await connection.sendRawTransaction(
+      signedTx.serialize()
+    );
+    
+    await connection.confirmTransaction(signature, "confirmed");
+    console.log("Transaction signature:", signature);
+  };
+
+  return <button onClick={handleSend}>Send 0.1 SOL</button>;
+};
+```
+
+### Network Information
+
+Get current network details:
+
+```tsx
+import { useAppKitNetwork } from "@reown/appkit/react";
+
+const NetworkInfo = () => {
+  const { chainId, chainName } = useAppKitNetwork();
+
+  return (
+    <div>
+      <p>Network: {chainName}</p>
+      <p>Chain ID: {chainId}</p>
+    </div>
+  );
+};
+```
+
+## Customization
+
+### Add More Wallets
+
+Include additional Solana wallet adapters:
+
+```tsx
+import {
+  PhantomWalletAdapter,
+  SolflareWalletAdapter,
+  BackpackWalletAdapter,
+  GlowWalletAdapter,
+} from "@solana/wallet-adapter-wallets";
+
+const solanaAdapter = new SolanaAdapter({
+  wallets: [
+    new PhantomWalletAdapter(),
+    new SolflareWalletAdapter(),
+    new BackpackWalletAdapter(),
+    new GlowWalletAdapter(),
+  ],
+});
+```
+
+### Theme Customization
+
+Customize the modal appearance:
+
+```tsx
+createAppKit({
+  adapters: [solanaAdapter],
+  networks: [solanaDevnet, solana],
+  projectId,
+  themeMode: "dark", // or "light"
+  themeVariables: {
+    "--w3m-accent": "#6366f1",
+    "--w3m-border-radius-master": "8px",
+  },
+  features: {
+    analytics: true,
+    email: false,
+    socials: [],
+  },
+});
+```
+
+### Default Network
+
+Set the default Solana network:
+
+```tsx
+import { solana, solanaDevnet, solanaTestnet } from "@reown/appkit/networks";
+
+createAppKit({
+  adapters: [solanaAdapter],
+  networks: [solana, solanaDevnet, solanaTestnet],
+  defaultNetwork: solana, // Start on mainnet
+  projectId,
+});
+```
+
+### Custom Metadata
+
+Add app metadata for better WalletConnect UX:
+
+```tsx
+createAppKit({
+  adapters: [solanaAdapter],
+  networks: [solanaDevnet, solana],
+  projectId,
+  metadata: {
+    name: "Your dApp Name",
+    description: "Your dApp description",
+    url: "https://your-app.com",
+    icons: ["https://your-app.com/icon.png"],
+  },
+});
+```
+
+### Disable Features
+
+Turn off specific AppKit features:
+
+```tsx
+createAppKit({
+  adapters: [solanaAdapter],
+  networks: [solanaDevnet, solana],
+  projectId,
+  features: {
+    analytics: false, // Disable analytics
+    email: false, // Disable email login
+    socials: [], // Disable social logins
+    onramp: false, // Disable fiat onramp
+  },
+});
+```
+
+### Custom RPC Endpoints
+
+Use custom Solana RPC providers:
+
+```tsx
+import { solana } from "@reown/appkit/networks";
+
+const customSolana = {
+  ...solana,
+  rpcUrls: {
+    default: {
+      http: ["https://your-custom-rpc.com"],
+    },
+  },
+};
+
+createAppKit({
+  adapters: [solanaAdapter],
+  networks: [customSolana],
+  projectId,
+});
+```
+
+## API Reference
+
+### Official Documentation
+
+- [Reown AppKit Docs](https://docs.reown.com/appkit/overview)
+- [Solana Integration](https://docs.reown.com/appkit/react/solana/about)
+- [Cloud Dashboard](https://cloud.reown.com/)
+- [WalletConnect Protocol](https://docs.walletconnect.com/)
+
+### Key Hooks
+
+- `useAppKit()` - Control modal open/close
+- `useAppKitAccount()` - Get account address and connection status
+- `useAppKitProvider()` - Access wallet provider for signing
+- `useAppKitNetwork()` - Get current network information
+- `useAppKitState()` - Get modal state (open, loading, etc.)
+
+### Components
+
+- `<appkit-button />` - Full connect button with modal
+- `<appkit-account-button />` - Account button (when connected)
+- `<appkit-network-button />` - Network switcher button
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Project ID missing error">
+    **Issue**: "Missing NEXT_PUBLIC_REOWN_PROJECT_ID" warning appears.
+
+    **Solutions**:
+    - Create `.env.local` in your project root
+    - Add `NEXT_PUBLIC_REOWN_PROJECT_ID=your_project_id`
+    - Get Project ID from [Reown Cloud](https://cloud.reown.com/)
+    - Restart dev server after adding the variable
+  </Accordion>
+
+  <Accordion title="Modal doesn't open">
+    **Issue**: Clicking connect button does nothing.
+
+    **Solutions**:
+    - Ensure `initializeAppKit()` is called before rendering
+    - Check browser console for initialization errors
+    - Verify Project ID is valid in Reown Cloud
+    - Make sure you're using the `open()` method correctly:
+    ```tsx
+    const { open } = useAppKit();
+    <button onClick={() => open()}>Connect</button>
+    ```
+  </Accordion>
+
+  <Accordion title="Wallet not detected">
+    **Issue**: Phantom or Solflare doesn't appear in modal.
+
+    **Solutions**:
+    - Ensure wallet extension is installed and enabled
+    - Add wallet adapter to the configuration:
+    ```tsx
+    new PhantomWalletAdapter()
+    ```
+    - Try refreshing the page
+    - Check that wallet supports WalletConnect protocol
+  </Accordion>
+
+  <Accordion title="Mobile wallet connection fails">
+    **Issue**: QR code scan doesn't connect mobile wallet.
+
+    **Solutions**:
+    - Verify mobile wallet supports WalletConnect v2
+    - Check that app metadata is configured:
+    ```tsx
+    metadata: {
+      name: "Your App",
+      url: "https://your-app.com",
+    }
+    ```
+    - Ensure your app is served over HTTPS (required for WalletConnect)
+    - Try using deep link instead of QR code
+  </Accordion>
+
+  <Accordion title="Transaction signing errors">
+    **Issue**: `signTransaction` fails or throws errors.
+
+    **Solutions**:
+    - Check that wallet provider exists:
+    ```tsx
+    const { walletProvider } = useAppKitProvider("solana");
+    if (!walletProvider) {
+      throw new Error("No wallet connected");
+    }
+    ```
+    - Ensure transaction is properly formatted:
+    ```tsx
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = new PublicKey(address);
+    ```
+    - Verify wallet has sufficient SOL for fees
+  </Accordion>
+
+  <Accordion title="Network switching issues">
+    **Issue**: Can't switch between mainnet and devnet.
+
+    **Solutions**:
+    - Ensure all networks are included in config:
+    ```tsx
+    import { solana, solanaDevnet } from "@reown/appkit/networks";
+    
+    networks: [solana, solanaDevnet]
+    ```
+    - Some wallets don't support network switching
+    - Disconnect and reconnect after network change
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Check Connection State" icon="plug">
+    Always verify connection before wallet operations:
+    ```tsx
+    const { isConnected, address } = useAppKitAccount();
+    
+    if (!isConnected || !address) {
+      return <div>Please connect wallet</div>;
+    }
+    ```
+  </Card>
+
+  <Card title="Handle Errors Gracefully" icon="circle-exclamation">
+    Wrap wallet operations in try-catch:
+    ```tsx
+    try {
+      const signed = await walletProvider.signTransaction(tx);
+    } catch (error) {
+      console.error("Transaction failed:", error);
+      // Show user-friendly error message
+    }
+    ```
+  </Card>
+
+  <Card title="Optimize for Mobile" icon="mobile">
+    Test WalletConnect flow on mobile devices:
+    - Ensure deep links work correctly
+    - Test QR code scanning
+    - Handle mobile wallet redirects
+  </Card>
+
+  <Card title="Use Production RPC" icon="server">
+    Don't rely on public RPCs for production:
+    ```tsx
+    rpcUrls: {
+      default: {
+        http: ["https://your-rpc-provider.com"],
+      },
+    }
+    ```
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="WalletConnect Cloud" icon="cloud" href="https://cloud.reown.com">
+    Monitor your app's WalletConnect usage
+  </Card>
+
+  <Card title="Advanced Features" icon="wand-magic-sparkles" href="https://docs.reown.com/appkit/features">
+    Explore email login, onramps, and more
+  </Card>
+
+  <Card title="Custom Theming" icon="palette" href="https://docs.reown.com/appkit/react/core/theming">
+    Fully customize the modal appearance
+  </Card>
+
+  <Card title="Migration Guide" icon="arrow-right" href="https://docs.reown.com/appkit/migration">
+    Migrate from Web3Modal v4 to AppKit
+  </Card>
+</CardGroup>

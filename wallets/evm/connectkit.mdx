@@ -1,0 +1,494 @@
+---
+title: ConnectKit
+description: Beautiful, highly customizable wallet connection UI for EVM dApps
+---
+
+# ConnectKit
+
+<Card title="Official Documentation" icon="book" href="https://docs.family.co/connectkit">
+  Visit the official ConnectKit documentation
+</Card>
+
+## Overview
+
+ConnectKit is a beautiful, customizable wallet connection library built by [Family](https://family.co). It offers smooth animations, extensive theming options, and a polished user experience for EVM applications.
+
+**Best for**: EVM dApps that need extensive UI customization and fine-grained control over the wallet connection experience.
+
+## Key Features
+
+- **Highly Customizable UI** - Fine-grained control over every aspect of the modal
+- **Smooth Animations** - Beautiful transitions and micro-interactions
+- **Built by Family** - Trusted team behind ENS and other web3 projects
+- **WalletConnect Integration** - QR code support for mobile wallets
+- **Theme System** - Multiple built-in themes plus custom theme support
+- **Responsive Design** - Works perfectly on mobile and desktop
+- **Built on wagmi & viem** - Uses industry-standard EVM libraries
+- **TypeScript First** - Full type safety and IntelliSense support
+
+## Installation
+
+Scaffold a new project with ConnectKit:
+
+<CodeGroup>
+```bash npm
+npx create-nextjs-dapp my-dapp --chain evm --wallet connectkit
+```
+
+```bash yarn
+yarn create nextjs-dapp my-dapp --chain evm --wallet connectkit
+```
+
+```bash pnpm
+pnpm create nextjs-dapp my-dapp --chain evm --wallet connectkit
+```
+
+```bash bun
+bunx create-nextjs-dapp my-dapp --chain evm --wallet connectkit
+```
+</CodeGroup>
+
+### Dependencies
+
+The CLI installs these packages:
+
+```json package.json
+{
+  "dependencies": {
+    "connectkit": "^1.8.2",
+    "wagmi": "^2.19.5",
+    "viem": "^2.44.4",
+    "@tanstack/react-query": "^5.0.0"
+  }
+}
+```
+
+## Configuration
+
+### Environment Variables
+
+Create a `.env.local` file in your project root:
+
+```bash .env.local
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id_here
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
+```
+
+<Steps>
+  <Step title="Get a WalletConnect Project ID">
+    1. Visit [WalletConnect Cloud](https://cloud.walletconnect.com)
+    2. Sign up or log in
+    3. Create a new project
+    4. Copy the Project ID
+  </Step>
+  
+  <Step title="Add to your .env.local">
+    Paste the Project ID into your `.env.local` file:
+    
+    ```bash
+    NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=abc123...
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  The WalletConnect Project ID enables WalletConnect protocol support for mobile wallet connections.
+</Note>
+
+### Provider Setup
+
+The CLI generates a `Providers.tsx` component:
+
+```tsx components/Providers.tsx
+"use client";
+
+import { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { WagmiProvider, createConfig, http } from "wagmi";
+import { ConnectKitProvider, getDefaultConfig } from "connectkit";
+import { ThemeProvider } from "next-themes";
+import { sepolia } from "wagmi/chains";
+
+const queryClient = new QueryClient();
+
+const config = createConfig(
+  getDefaultConfig({
+    chains: [sepolia],
+    transports: {
+      [sepolia.id]: http(),
+    },
+    walletConnectProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "",
+    appName: "web3 starter",
+  })
+);
+
+const Providers = ({ children }: { children: ReactNode }) => {
+  if (!process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID) {
+    console.warn(
+      "Missing NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID. Get one at https://cloud.walletconnect.com/"
+    );
+  }
+
+  return (
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <WagmiProvider config={config}>
+        <QueryClientProvider client={queryClient}>
+          <ConnectKitProvider mode="dark">{children}</ConnectKitProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
+    </ThemeProvider>
+  );
+};
+
+export { Providers };
+```
+
+### Layout Integration
+
+Add providers to your layout:
+
+```tsx app/layout.tsx
+import "./globals.css";
+import { Providers } from "@/components/Providers";
+import { Header } from "@/components/Header";
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html suppressHydrationWarning lang="en">
+      <body>
+        <Providers>
+          <Header />
+          {children}
+        </Providers>
+      </body>
+    </html>
+  );
+}
+```
+
+## Usage
+
+### Connect Button
+
+ConnectKit provides a simple button component:
+
+```tsx components/Header.tsx
+"use client";
+
+import { ConnectKitButton } from "connectkit";
+import { ThemeToggle } from "./ThemeToggle";
+
+const Header = () => {
+  return (
+    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
+      <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">web3_starter</span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <ConnectKitButton />
+        </div>
+      </div>
+    </header>
+  );
+};
+
+export { Header };
+```
+
+### Custom Button
+
+Create a fully custom button with ConnectKit's render props:
+
+```tsx
+import { ConnectKitButton } from "connectkit";
+
+<ConnectKitButton.Custom>
+  {({ isConnected, show, truncatedAddress, ensName }) => {
+    return (
+      <button onClick={show}>
+        {isConnected ? ensName ?? truncatedAddress : "Connect Wallet"}
+      </button>
+    );
+  }}
+</ConnectKitButton.Custom>
+```
+
+### Wagmi Hooks
+
+Use wagmi hooks to interact with wallets:
+
+```tsx components/MyComponent.tsx
+"use client";
+
+import { useAccount, useBalance, useReadContract, useWriteContract } from "wagmi";
+import { sepolia } from "wagmi/chains";
+import { abi } from "@/abi/MyContract";
+
+const MyComponent = () => {
+  const { address, isConnected } = useAccount();
+  
+  const { data: balance } = useBalance({
+    address,
+  });
+
+  const { data: greeting } = useReadContract({
+    address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`,
+    abi,
+    functionName: "greeting",
+  });
+
+  const { writeContract, isPending } = useWriteContract();
+
+  const handleUpdate = () => {
+    writeContract({
+      address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`,
+      abi,
+      functionName: "setGreeting",
+      args: ["Hello, ConnectKit!"],
+    });
+  };
+
+  if (!isConnected) {
+    return <p>Please connect your wallet</p>;
+  }
+
+  return (
+    <div>
+      <p>Address: {address}</p>
+      <p>Balance: {balance?.formatted}</p>
+      <p>Greeting: {greeting as string}</p>
+      <button onClick={handleUpdate} disabled={isPending}>
+        {isPending ? "Updating..." : "Update Greeting"}
+      </button>
+    </div>
+  );
+};
+```
+
+## Customization
+
+### Theme Modes
+
+ConnectKit supports multiple theme modes:
+
+```tsx components/Providers.tsx
+<ConnectKitProvider mode="light">  {/* light theme */}
+<ConnectKitProvider mode="dark">   {/* dark theme */}
+<ConnectKitProvider mode="auto">   {/* system preference */}
+```
+
+### Custom Theme
+
+Create a fully custom theme:
+
+```tsx components/Providers.tsx
+import { ConnectKitProvider } from "connectkit";
+
+const customTheme = {
+  "--ck-connectbutton-font-size": "16px",
+  "--ck-connectbutton-border-radius": "8px",
+  "--ck-connectbutton-color": "#ffffff",
+  "--ck-connectbutton-background": "#7b3fe4",
+  "--ck-connectbutton-hover-background": "#6a35c9",
+  "--ck-primary-button-border-radius": "8px",
+  "--ck-overlay-background": "rgba(0, 0, 0, 0.8)",
+  "--ck-modal-box-shadow": "0 0 50px rgba(0, 0, 0, 0.4)",
+};
+
+<ConnectKitProvider mode="dark" customTheme={customTheme}>
+  {children}
+</ConnectKitProvider>
+```
+
+### Chain Configuration
+
+Add multiple chains:
+
+```tsx components/Providers.tsx
+import { mainnet, polygon, optimism, arbitrum, sepolia } from "wagmi/chains";
+
+const config = createConfig(
+  getDefaultConfig({
+    chains: [mainnet, polygon, optimism, arbitrum, sepolia],
+    transports: {
+      [mainnet.id]: http(),
+      [polygon.id]: http(),
+      [optimism.id]: http(),
+      [arbitrum.id]: http(),
+      [sepolia.id]: http(),
+    },
+    walletConnectProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "",
+    appName: "My dApp",
+  })
+);
+```
+
+### Custom Avatar
+
+Set a custom avatar for the connected account:
+
+```tsx
+<ConnectKitProvider
+  options={{
+    customAvatar: (address) => `https://api.dicebear.com/7.x/identicon/svg?seed=${address}`,
+  }}
+>
+  {children}
+</ConnectKitProvider>
+```
+
+### Hide Balance
+
+Hide the balance display in the modal:
+
+```tsx
+<ConnectKitProvider
+  options={{
+    hideBalance: true,
+  }}
+>
+  {children}
+</ConnectKitProvider>
+```
+
+## API Reference
+
+### Official Documentation
+
+<CardGroup cols={2}>
+  <Card title="ConnectKit Docs" icon="book" href="https://docs.family.co/connectkit">
+    Complete ConnectKit documentation
+  </Card>
+  <Card title="wagmi Docs" icon="plug" href="https://wagmi.sh">
+    Wagmi hooks and utilities
+  </Card>
+  <Card title="viem Docs" icon="code" href="https://viem.sh">
+    Low-level Ethereum interactions
+  </Card>
+  <Card title="WalletConnect" icon="wallet" href="https://cloud.walletconnect.com">
+    Get your Project ID
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Modal Not Opening
+
+**Issue**: ConnectKit button doesn't open the modal
+
+**Solution**:
+1. Verify `ConnectKitProvider` wraps your app
+2. Check that `WagmiProvider` is configured correctly
+3. Ensure you're using `"use client"` directive in client components
+4. Check browser console for errors
+
+### Styling Conflicts
+
+**Issue**: ConnectKit styles conflict with your app styles
+
+**Solution**: Use ConnectKit's custom theme options to override conflicting styles:
+
+```tsx
+const customTheme = {
+  "--ck-font-family": "var(--font-mono)",
+  // Override other conflicting styles
+};
+```
+
+### WalletConnect Not Working
+
+**Issue**: QR code scanning doesn't work
+
+**Solution**:
+1. Verify `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` is set
+2. Check that the Project ID is valid
+3. Ensure you're using HTTPS (required by WalletConnect)
+4. Test with different mobile wallets
+
+### Chain Not Supported
+
+**Issue**: "Chain not supported" error
+
+**Solution**: Add the chain to your wagmi config:
+
+```tsx
+import { sepolia } from "wagmi/chains";
+
+const config = createConfig(
+  getDefaultConfig({
+    chains: [sepolia], // Add your chains here
+    // ...
+  })
+);
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Customize for Your Brand">
+    ConnectKit's strength is customization. Take advantage of it:
+    
+    ```tsx
+    const brandTheme = {
+      "--ck-connectbutton-background": "#your-brand-color",
+      "--ck-connectbutton-hover-background": "#your-hover-color",
+      "--ck-border-radius": "12px",
+    };
+    ```
+  </Accordion>
+  
+  <Accordion title="Handle Connection State">
+    Always handle both connected and disconnected states:
+    
+    ```tsx
+    const { isConnected, isConnecting } = useAccount();
+    
+    if (isConnecting) return <p>Connecting...</p>;
+    if (!isConnected) return <p>Please connect</p>;
+    ```
+  </Accordion>
+  
+  <Accordion title="Use TypeScript">
+    ConnectKit has excellent TypeScript support. Use it:
+    
+    ```tsx
+    import { ConnectKitButton } from "connectkit";
+    import type { CustomTheme } from "connectkit";
+    
+    const theme: CustomTheme = {
+      // Full type safety
+    };
+    ```
+  </Accordion>
+  
+  <Accordion title="Test on Multiple Devices">
+    ConnectKit's responsive design looks different on desktop vs mobile. Test both:
+    - Desktop: Modal experience
+    - Mobile: Full-screen experience
+    - QR codes: Test with real mobile wallets
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Chain Configuration" icon="link" href="/config/chains">
+    Configure different blockchain networks
+  </Card>
+  <Card title="Project Structure" icon="folder" href="/guides/project-structure">
+    Understand the generated project structure
+  </Card>
+  <Card title="Environment Variables" icon="key" href="/guides/environment-variables">
+    Learn about environment configuration
+  </Card>
+  <Card title="Deployment" icon="rocket" href="/guides/deployment">
+    Deploy your dApp to production
+  </Card>
+</CardGroup>

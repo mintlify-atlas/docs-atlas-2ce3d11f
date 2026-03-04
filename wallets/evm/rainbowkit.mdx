@@ -1,0 +1,611 @@
+---
+title: RainbowKit
+description: Best-in-class wallet connection UI for EVM dApps with support for 100+ wallets
+---
+
+# RainbowKit
+
+<Card title="Official Documentation" icon="book" href="https://rainbowkit.com/docs">
+  Visit the official RainbowKit documentation
+</Card>
+
+## Overview
+
+RainbowKit is the **recommended wallet provider for EVM dApps**. Built by the Rainbow team, it offers a beautiful, polished wallet connection experience with excellent TypeScript support and comprehensive wallet compatibility.
+
+**Best for**: Production EVM applications that need a polished wallet connection UI without embedded wallet or social login requirements.
+
+## Key Features
+
+- **Beautiful Modal UI** - Polished, professional wallet connection experience
+- **100+ Wallet Support** - MetaMask, Rainbow, Coinbase Wallet, WalletConnect, and more
+- **Excellent TypeScript Support** - Full type safety throughout
+- **Theme Customization** - Built-in light/dark themes with customization options
+- **Built on wagmi & viem** - Uses the best EVM libraries under the hood
+- **WalletConnect Integration** - QR code support for mobile wallets
+- **Chain Switching** - Seamless network switching with visual feedback
+- **Custom Branding** - Customize colors, borders, and modal appearance
+
+## Installation
+
+Scaffold a new project with RainbowKit:
+
+<CodeGroup>
+```bash npm
+npx create-nextjs-dapp my-dapp --chain evm --wallet rainbowkit
+```
+
+```bash yarn
+yarn create nextjs-dapp my-dapp --chain evm --wallet rainbowkit
+```
+
+```bash pnpm
+pnpm create nextjs-dapp my-dapp --chain evm --wallet rainbowkit
+```
+
+```bash bun
+bunx create-nextjs-dapp my-dapp --chain evm --wallet rainbowkit
+```
+</CodeGroup>
+
+### Dependencies
+
+The CLI installs these packages:
+
+```json package.json
+{
+  "dependencies": {
+    "@rainbow-me/rainbowkit": "^2.2.10",
+    "wagmi": "^2.19.5",
+    "viem": "^2.44.4",
+    "@tanstack/react-query": "^5.0.0"
+  }
+}
+```
+
+## Configuration
+
+### Environment Variables
+
+Create a `.env.local` file in your project root:
+
+```bash .env.local
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id_here
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
+```
+
+<Steps>
+  <Step title="Get a WalletConnect Project ID">
+    1. Visit [WalletConnect Cloud](https://cloud.walletconnect.com)
+    2. Sign up or log in
+    3. Create a new project
+    4. Copy the Project ID
+  </Step>
+  
+  <Step title="Add to your .env.local">
+    Paste the Project ID into your `.env.local` file:
+    
+    ```bash
+    NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=abc123...
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  The WalletConnect Project ID is optional for development but **required for production**. Without it, WalletConnect features will be limited.
+</Note>
+
+### Provider Setup
+
+The CLI generates a `Providers.tsx` component that wraps your app:
+
+```tsx components/Providers.tsx
+"use client";
+
+import { ReactNode, useState, useEffect } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { WagmiProvider, createConfig, http } from "wagmi";
+import {
+  getDefaultConfig,
+  RainbowKitProvider,
+  darkTheme,
+  lightTheme,
+} from "@rainbow-me/rainbowkit";
+import { ThemeProvider, useTheme } from "next-themes";
+import { sepolia } from "wagmi/chains";
+
+const queryClient = new QueryClient();
+
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "";
+
+const config = projectId
+  ? getDefaultConfig({
+      appName: "web3 starter",
+      projectId,
+      chains: [sepolia],
+      ssr: true,
+    })
+  : createConfig({
+      chains: [sepolia],
+      transports: {
+        [sepolia.id]: http(),
+      },
+      ssr: true,
+    });
+
+const RainbowKitWithTheme = ({ children }: { children: ReactNode }) => {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const rainbowTheme =
+    mounted && resolvedTheme === "light" ? lightTheme() : darkTheme();
+
+  return (
+    <RainbowKitProvider theme={rainbowTheme}>{children}</RainbowKitProvider>
+  );
+};
+
+const Providers = ({ children }: { children: ReactNode }) => {
+  return (
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <WagmiProvider config={config}>
+        <QueryClientProvider client={queryClient}>
+          <RainbowKitWithTheme>{children}</RainbowKitWithTheme>
+        </QueryClientProvider>
+      </WagmiProvider>
+    </ThemeProvider>
+  );
+};
+
+export { Providers };
+```
+
+### Layout Integration
+
+Import RainbowKit styles in your layout:
+
+```tsx app/layout.tsx
+import "./globals.css";
+import "@rainbow-me/rainbowkit/styles.css";
+import { Providers } from "@/components/Providers";
+import { Header } from "@/components/Header";
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html suppressHydrationWarning lang="en">
+      <body>
+        <Providers>
+          <Header />
+          {children}
+        </Providers>
+      </body>
+    </html>
+  );
+}
+```
+
+## Usage
+
+### Connect Button
+
+RainbowKit provides two ways to use the connect button:
+
+#### Default Button (Quickest)
+
+```tsx components/Header.tsx
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+
+const Header = () => {
+  return (
+    <header>
+      <ConnectButton />
+    </header>
+  );
+};
+```
+
+#### Custom Button (More Control)
+
+The CLI generates a custom button implementation for better design control:
+
+```tsx components/Header.tsx
+"use client";
+
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { ThemeToggle } from "./ThemeToggle";
+
+const Header = () => {
+  return (
+    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
+      <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">web3_starter</span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <ConnectButton.Custom>
+            {({
+              account,
+              chain,
+              openAccountModal,
+              openChainModal,
+              openConnectModal,
+              mounted,
+            }) => {
+              const ready = mounted;
+              const connected = ready && account && chain;
+
+              return (
+                <div
+                  {...(!ready && {
+                    "aria-hidden": true,
+                    style: {
+                      opacity: 0,
+                      pointerEvents: "none",
+                      userSelect: "none",
+                    },
+                  })}
+                >
+                  {(() => {
+                    if (!connected) {
+                      return (
+                        <button
+                          onClick={openConnectModal}
+                          className="px-4 py-2 text-sm border border-primary"
+                        >
+                          connect wallet
+                        </button>
+                      );
+                    }
+
+                    if (chain.unsupported) {
+                      return (
+                        <button
+                          onClick={openChainModal}
+                          className="px-4 py-2 text-sm border border-destructive"
+                        >
+                          wrong network
+                        </button>
+                      );
+                    }
+
+                    return (
+                      <div className="flex items-center gap-3 text-sm">
+                        <button
+                          onClick={openChainModal}
+                          className="px-3 py-1.5 border border-border"
+                        >
+                          {chain.name?.toLowerCase()}
+                        </button>
+                        <button
+                          onClick={openAccountModal}
+                          className="px-3 py-1.5 border border-primary"
+                        >
+                          {account.displayName}
+                        </button>
+                      </div>
+                    );
+                  })()}
+                </div>
+              );
+            }}
+          </ConnectButton.Custom>
+        </div>
+      </div>
+    </header>
+  );
+};
+
+export { Header };
+```
+
+### Wagmi Hooks
+
+Use wagmi hooks to interact with the connected wallet:
+
+```tsx components/MyComponent.tsx
+"use client";
+
+import { useAccount, useBalance, useReadContract, useWriteContract } from "wagmi";
+import { sepolia } from "wagmi/chains";
+import { abi } from "@/abi/MyContract";
+
+const MyComponent = () => {
+  const { address, isConnected, chain } = useAccount();
+  
+  // Get wallet balance
+  const { data: balance } = useBalance({
+    address,
+    chainId: sepolia.id,
+  });
+
+  // Read from contract
+  const { data: greeting } = useReadContract({
+    address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`,
+    abi,
+    functionName: "greeting",
+    chainId: sepolia.id,
+  });
+
+  // Write to contract
+  const { writeContract, isPending } = useWriteContract();
+
+  const handleUpdate = () => {
+    writeContract({
+      address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`,
+      abi,
+      functionName: "setGreeting",
+      args: ["Hello, RainbowKit!"],
+    });
+  };
+
+  return (
+    <div>
+      {isConnected ? (
+        <div>
+          <p>Connected: {address}</p>
+          <p>Chain: {chain?.name}</p>
+          <p>Balance: {balance?.formatted} {balance?.symbol}</p>
+          <p>Greeting: {greeting as string}</p>
+          <button onClick={handleUpdate} disabled={isPending}>
+            {isPending ? "Updating..." : "Update Greeting"}
+          </button>
+        </div>
+      ) : (
+        <p>Please connect your wallet</p>
+      )}
+    </div>
+  );
+};
+```
+
+## Customization
+
+### Theme Customization
+
+Customize the RainbowKit theme to match your brand:
+
+```tsx components/Providers.tsx
+import { darkTheme, lightTheme } from "@rainbow-me/rainbowkit";
+
+const customDarkTheme = darkTheme({
+  accentColor: '#7b3fe4',
+  accentColorForeground: 'white',
+  borderRadius: 'medium',
+  fontStack: 'system',
+});
+
+const customLightTheme = lightTheme({
+  accentColor: '#7b3fe4',
+  accentColorForeground: 'white',
+  borderRadius: 'medium',
+  fontStack: 'system',
+});
+
+// Then use in RainbowKitProvider:
+<RainbowKitProvider theme={isDark ? customDarkTheme : customLightTheme}>
+  {children}
+</RainbowKitProvider>
+```
+
+### Chain Configuration
+
+Add multiple chains:
+
+```tsx components/Providers.tsx
+import { mainnet, polygon, optimism, arbitrum, sepolia } from "wagmi/chains";
+
+const config = getDefaultConfig({
+  appName: "My dApp",
+  projectId,
+  chains: [mainnet, polygon, optimism, arbitrum, sepolia],
+  ssr: true,
+});
+```
+
+### Custom Wallet List
+
+Specify which wallets to show:
+
+```tsx components/Providers.tsx
+import { connectorsForWallets } from '@rainbow-me/rainbowkit';
+import {
+  metaMaskWallet,
+  rainbowWallet,
+  coinbaseWallet,
+  walletConnectWallet,
+} from '@rainbow-me/rainbowkit/wallets';
+
+const connectors = connectorsForWallets(
+  [
+    {
+      groupName: 'Recommended',
+      wallets: [metaMaskWallet, rainbowWallet, coinbaseWallet],
+    },
+    {
+      groupName: 'Other',
+      wallets: [walletConnectWallet],
+    },
+  ],
+  {
+    appName: 'My dApp',
+    projectId,
+  }
+);
+```
+
+### Modal Size and Position
+
+Customize modal behavior:
+
+```tsx components/Providers.tsx
+<RainbowKitProvider
+  modalSize="compact"
+  theme={rainbowTheme}
+  showRecentTransactions={true}
+  coolMode={true}
+>
+  {children}
+</RainbowKitProvider>
+```
+
+## API Reference
+
+### Official Documentation
+
+<CardGroup cols={2}>
+  <Card title="RainbowKit Docs" icon="book" href="https://rainbowkit.com/docs">
+    Complete RainbowKit documentation
+  </Card>
+  <Card title="wagmi Docs" icon="plug" href="https://wagmi.sh">
+    Wagmi hooks and utilities
+  </Card>
+  <Card title="viem Docs" icon="code" href="https://viem.sh">
+    Low-level Ethereum interactions
+  </Card>
+  <Card title="WalletConnect" icon="wallet" href="https://cloud.walletconnect.com">
+    Get your Project ID
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### WalletConnect Project ID Warning
+
+**Issue**: Console warning about missing `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`
+
+**Solution**: 
+1. Get a Project ID from [WalletConnect Cloud](https://cloud.walletconnect.com)
+2. Add it to your `.env.local` file
+3. Restart your development server
+
+```bash .env.local
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id_here
+```
+
+### SSR Hydration Mismatch
+
+**Issue**: Hydration errors when using RainbowKit with Next.js App Router
+
+**Solution**: The generated template already handles this with `suppressHydrationWarning` and proper client component boundaries. Ensure:
+
+1. `"use client"` directive is at the top of `Providers.tsx`
+2. `suppressHydrationWarning` is on the `<html>` tag in `layout.tsx`
+3. Provider components are client components
+
+### Chain Not Supported
+
+**Issue**: "Chain not supported" error when connecting
+
+**Solution**: Add the chain to your config:
+
+```tsx
+import { sepolia, mainnet } from "wagmi/chains";
+
+const config = getDefaultConfig({
+  // ...
+  chains: [mainnet, sepolia], // Add your chains here
+});
+```
+
+### Theme Not Applying
+
+**Issue**: Custom theme colors not showing
+
+**Solution**: Make sure you're using the theme hooks correctly:
+
+```tsx
+import { useTheme } from "next-themes";
+import { darkTheme, lightTheme } from "@rainbow-me/rainbowkit";
+
+const { resolvedTheme } = useTheme();
+const theme = resolvedTheme === "light" ? lightTheme() : darkTheme();
+```
+
+### Wallet Connection Stuck
+
+**Issue**: Wallet connection modal gets stuck or doesn't open
+
+**Solution**:
+1. Check browser console for errors
+2. Verify WalletConnect Project ID is valid
+3. Clear browser cache and cookies
+4. Try a different wallet
+5. Check if the wallet extension is up to date
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Environment Variables">
+    Always store sensitive configuration in environment variables:
+    
+    ```bash
+    NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=abc123
+    NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
+    ```
+    
+    Never commit `.env.local` to version control.
+  </Accordion>
+  
+  <Accordion title="Handle Disconnected State">
+    Always check if a wallet is connected before showing wallet-dependent UI:
+    
+    ```tsx
+    const { isConnected } = useAccount();
+    
+    if (!isConnected) {
+      return <p>Please connect your wallet</p>;
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Show Loading States">
+    Show loading indicators for blockchain operations:
+    
+    ```tsx
+    const { writeContract, isPending } = useWriteContract();
+    
+    <button disabled={isPending}>
+      {isPending ? "Processing..." : "Submit"}
+    </button>
+    ```
+  </Accordion>
+  
+  <Accordion title="Error Handling">
+    Handle errors gracefully:
+    
+    ```tsx
+    const { error } = useReadContract({ ... });
+    
+    if (error) {
+      return <div>Error: {error.message}</div>;
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Chain Configuration" icon="link" href="/config/chains">
+    Configure different blockchain networks
+  </Card>
+  <Card title="Project Structure" icon="folder" href="/guides/project-structure">
+    Understand the generated project structure
+  </Card>
+  <Card title="Environment Variables" icon="key" href="/guides/environment-variables">
+    Learn about environment configuration
+  </Card>
+  <Card title="Deployment" icon="rocket" href="/guides/deployment">
+    Deploy your dApp to production
+  </Card>
+</CardGroup>

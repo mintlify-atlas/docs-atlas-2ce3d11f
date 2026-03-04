@@ -1,0 +1,122 @@
+---
+title: 'CLI Commands'
+description: 'Complete reference for create-nextjs-dapp commands'
+---
+
+## Main Command
+
+The `create-nextjs-dapp` CLI has a single main command that creates a new Next.js dApp project with your preferred blockchain and wallet provider.
+
+### Syntax
+
+```bash
+create-nextjs-dapp [project-name] [options]
+```
+
+<ParamField path="project-name" type="string" optional>
+  The name of your project. Must be a valid npm package name (lowercase, no spaces, can include hyphens and underscores).
+  
+  If not provided, you'll be prompted to enter it in interactive mode, or it defaults to `my-dapp` when using `--yes` flag.
+</ParamField>
+
+## How It Works
+
+The CLI operates in two modes depending on the options you provide:
+
+### Interactive Mode
+
+When you run the command without all required options, the CLI guides you through an interactive setup:
+
+```bash
+npx create-nextjs-dapp
+```
+
+You'll be prompted to:
+
+1. **Project name** - Enter a valid npm package name
+2. **Blockchain selection** - Choose between EVM or Solana
+3. **Wallet provider** - Select from compatible providers for your chosen chain
+4. **Directory conflicts** - Handle any existing files (if applicable)
+
+<Note>
+Interactive mode uses beautiful CLI prompts powered by [@clack/prompts](https://github.com/natemoo-re/clack) for a great developer experience.
+</Note>
+
+### Non-Interactive Mode
+
+When you provide all required options (or use the `--yes` flag), the CLI runs without any prompts:
+
+```bash
+npx create-nextjs-dapp my-dapp --chain evm --wallet rainbowkit --yes
+```
+
+This is perfect for:
+- CI/CD pipelines
+- Scripted project creation
+- Quick scaffolding when you know exactly what you want
+
+<Warning>
+In non-interactive mode, the CLI will exit with an error if:
+- The directory exists and contains conflicting files
+- An incompatible chain/wallet combination is specified
+- The project name is invalid
+</Warning>
+
+## Execution Flow
+
+Here's what happens when you run the command:
+
+1. **Parse arguments** - Command-line flags and options are validated
+2. **Gather configuration** - Missing options are collected via prompts (unless `--yes` is used)
+3. **Validate compatibility** - Ensures the selected wallet provider supports the chosen chain
+4. **Check directory** - Verifies the target directory is writable and handles conflicts
+5. **Generate project** - Creates all project files from templates
+6. **Initialize git** - Optionally creates a git repository (with `--git` flag)
+7. **Install dependencies** - Optionally runs package manager install (with `--install` flag)
+8. **Display summary** - Shows next steps and project configuration
+
+## Package Manager Detection
+
+The CLI automatically detects which package manager you're using based on how you invoke it:
+
+<CodeGroup>
+```bash npm
+npx create-nextjs-dapp my-dapp
+# Uses npm
+```
+
+```bash yarn
+yarn create nextjs-dapp my-dapp
+# Uses yarn
+```
+
+```bash pnpm
+pnpm create nextjs-dapp my-dapp
+# Uses pnpm
+```
+
+```bash bun
+bunx create-nextjs-dapp my-dapp
+# Uses bun
+```
+</CodeGroup>
+
+You can override the detected package manager using the `--use-npm`, `--use-yarn`, `--use-pnpm`, or `--use-bun` flags.
+
+## Exit Codes
+
+The CLI uses standard exit codes:
+
+- `0` - Success
+- `1` - Error (invalid arguments, failed validation, user cancellation, etc.)
+
+## Update Notifications
+
+The CLI automatically checks for updates once per day (cached) and notifies you if a newer version is available:
+
+```bash
+Update available: 1.0.0 → 1.1.0
+Run npm i -g create-nextjs-dapp to update
+```
+
+This helps ensure you're always using the latest features and bug fixes.

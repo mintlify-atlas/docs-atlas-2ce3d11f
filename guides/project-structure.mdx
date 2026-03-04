@@ -1,0 +1,319 @@
+---
+title: Project Structure
+description: Understanding the structure of generated dApp projects
+---
+
+Generated projects follow a modern Next.js 15 App Router structure with TypeScript, Tailwind CSS, and blockchain integration. The structure varies slightly based on your chain (EVM vs Solana) and wallet provider selection.
+
+## Base Structure
+
+Every generated project includes these files from the base template:
+
+```
+my-dapp/
+├── app/
+│   ├── layout.tsx          # Root layout with providers
+│   ├── page.tsx            # Home page
+│   └── globals.css         # Global styles and theme
+├── components/
+│   ├── Header.tsx          # Navigation with wallet connection
+│   ├── Providers.tsx       # Blockchain provider setup
+│   └── ThemeToggle.tsx     # Dark/light mode toggle
+├── lib/
+│   └── utils.ts            # Utility functions (cn, etc.)
+├── public/
+│   ├── next.svg
+│   └── vercel.svg
+├── .env.example            # Environment variables template
+├── .eslintrc.json          # ESLint configuration
+├── .gitignore              # Git ignore rules
+├── components.json         # shadcn/ui configuration
+├── next.config.js          # Next.js configuration
+├── package.json            # Dependencies and scripts
+├── postcss.config.js       # PostCSS configuration
+├── tailwind.config.ts      # Tailwind CSS configuration
+└── tsconfig.json           # TypeScript configuration
+```
+
+## EVM-Specific Structure
+
+Projects targeting EVM chains (Ethereum, Polygon, etc.) include additional files:
+
+```
+my-dapp/
+├── abi/
+│   └── greeter.json        # Sample contract ABI
+├── components/
+│   └── Greeting.tsx        # Contract interaction component
+├── hooks/
+│   └── useGreeting.ts      # Custom hook for contract reads/writes
+└── app/
+    └── page.tsx            # Includes Greeting component
+```
+
+### EVM Components Breakdown
+
+<AccordionGroup>
+
+<Accordion title="abi/greeter.json">
+Sample smart contract ABI (Application Binary Interface) for a simple Greeter contract. Replace this with your own contract's ABI.
+
+```json
+[
+  {
+    "inputs": [],
+    "name": "greeting",
+    "outputs": [{ "type": "string" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "name": "_greeting", "type": "string" }],
+    "name": "setGreeting",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]
+```
+</Accordion>
+
+<Accordion title="hooks/useGreeting.ts">
+Custom React hook using wagmi for reading and writing to the smart contract:
+
+```typescript
+import { useReadContract, useWriteContract } from "wagmi";
+import { greeterAbi } from "@/abi/greeter";
+
+export function useGreeting(contractAddress: `0x${string}`) {
+  // Read current greeting
+  const { data: greeting } = useReadContract({
+    address: contractAddress,
+    abi: greeterAbi,
+    functionName: "greeting",
+  });
+
+  // Write new greeting
+  const { writeContract } = useWriteContract();
+
+  return { greeting, setGreeting: writeContract };
+}
+```
+</Accordion>
+
+<Accordion title="components/Greeting.tsx">
+UI component that displays and updates the on-chain greeting. Includes wallet connection state handling and transaction feedback.
+</Accordion>
+
+</AccordionGroup>
+
+## Solana-Specific Structure
+
+Projects targeting Solana include:
+
+```
+my-dapp/
+├── components/
+│   └── WalletStatus.tsx    # Wallet connection status display
+└── app/
+    └── page.tsx            # Includes WalletStatus component
+```
+
+### Solana Components Breakdown
+
+<Accordion title="components/WalletStatus.tsx">
+Displays connected wallet information including:
+- Wallet address
+- SOL balance
+- Connection status
+- Network information
+
+Replace this with your own Solana program interactions.
+</Accordion>
+
+## Provider-Specific Files
+
+Different wallet providers require different setup files. These override the base components:
+
+### RainbowKit (EVM)
+
+```
+rainbowkit/
+├── app/
+│   └── layout.tsx          # Imports RainbowKit styles
+└── components/
+    ├── Providers.tsx       # WagmiProvider + RainbowKitProvider
+    └── Header.tsx          # Uses ConnectButton
+```
+
+### Thirdweb (EVM/Solana)
+
+```
+thirdweb/
+├── lib/
+│   └── client.ts           # Thirdweb client configuration
+├── components/
+│   ├── Providers.tsx       # ThirdwebProvider
+│   └── Header.tsx          # Uses ConnectButton
+└── hooks/
+    └── useGreeting.ts      # Uses Thirdweb React SDK
+```
+
+### Privy (EVM/Solana)
+
+```
+privy/
+├── components/
+│   ├── Providers.tsx       # PrivyProvider configuration
+│   └── Header.tsx          # Uses usePrivy hook
+└── app/
+    └── layout.tsx          # Privy-specific styles
+```
+
+### Dynamic (EVM/Solana)
+
+```
+dynamic/
+└── components/
+    ├── Providers.tsx       # DynamicContextProvider
+    └── Header.tsx          # Uses DynamicWidget
+```
+
+### Solana Wallet Adapter
+
+```
+wallet-adapter/
+└── components/
+    ├── Providers.tsx       # WalletProvider + ConnectionProvider
+    └── Header.tsx          # Uses WalletMultiButton
+```
+
+## Configuration Files
+
+### package.json
+
+All projects include these scripts:
+
+```json
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  }
+}
+```
+
+Dependencies vary by provider but always include:
+- `next` (v16+)
+- `react` & `react-dom` (v19+)
+- `typescript`
+- `tailwindcss`
+- `viem` & `wagmi` (EVM) or Solana libraries
+
+### next.config.js
+
+Configured for optimal Web3 compatibility:
+
+```javascript
+const nextConfig = {
+  turbopack: {},
+  serverExternalPackages: ["pino-pretty", "lokijs", "encoding"],
+};
+```
+
+<Note>
+The `serverExternalPackages` configuration prevents bundling issues with wallet libraries that use Node.js-specific modules.
+</Note>
+
+### tsconfig.json
+
+Configured with path aliases for clean imports:
+
+```json
+{
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./*"]
+    }
+  }
+}
+```
+
+Use `@/components/Header` instead of `../components/Header`.
+
+### tailwind.config.ts
+
+Pre-configured with:
+- CSS variables for theming
+- `tailwindcss-animate` plugin
+- Custom color palette
+- Dark mode support
+
+## Template Composition
+
+The CLI composes your project in three layers:
+
+<Steps>
+
+<Step title="Base Template">
+Copies `templates/base/` with:
+- Next.js configuration
+- Tailwind setup
+- Theme system
+- Base components
+</Step>
+
+<Step title="Chain Template">
+Overlays `templates/{chain}/` with:
+- Chain-specific components
+- Contract/program interaction code
+- Chain-specific utilities
+</Step>
+
+<Step title="Wallet Template">
+Overlays `templates/{chain}/{wallet}/` with:
+- Provider configuration
+- Wallet-specific components
+- Custom hooks if needed
+</Step>
+
+</Steps>
+
+This layered approach ensures maximum code reuse while allowing provider-specific customization.
+
+## Key Files to Modify
+
+<CardGroup cols={2}>
+
+<Card title="app/page.tsx" icon="house">
+Your main landing page. Replace with your dApp's UI.
+</Card>
+
+<Card title="components/Providers.tsx" icon="plug">
+Blockchain provider configuration. Update chain IDs, RPC URLs.
+</Card>
+
+<Card title=".env.example" icon="key">
+Add your API keys and contract addresses.
+</Card>
+
+<Card title="abi/greeter.json" icon="file-contract">
+Replace with your smart contract's ABI.
+</Card>
+
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Environment Variables" icon="key" href="/guides/environment-variables">
+Configure your API keys and contract addresses
+</Card>
+
+<Card title="Deployment" icon="rocket" href="/guides/deployment">
+Deploy your dApp to production
+</Card>
+
+</CardGroup>

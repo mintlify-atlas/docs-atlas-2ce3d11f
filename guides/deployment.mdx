@@ -1,0 +1,573 @@
+---
+title: Deployment
+description: Deploy your Next.js dApp to production
+---
+
+Generated dApps are standard Next.js 15 applications that can be deployed to any platform supporting Next.js. This guide focuses on Vercel deployment (recommended) but includes tips for other platforms.
+
+## Prerequisites
+
+Before deploying:
+
+<Steps>
+
+<Step title="Test locally">
+Ensure your dApp works correctly in development:
+
+```bash
+npm run dev
+# or yarn dev, pnpm dev, bun dev
+```
+
+Test wallet connections and contract interactions.
+</Step>
+
+<Step title="Build successfully">
+Verify your project builds without errors:
+
+```bash
+npm run build
+```
+
+Fix any TypeScript errors or build warnings.
+</Step>
+
+<Step title="Gather API keys">
+Collect all required environment variables from your `.env.local` file. You'll need to configure these in your deployment platform.
+</Step>
+
+</Steps>
+
+## Vercel Deployment (Recommended)
+
+Vercel is created by the Next.js team and provides the best deployment experience.
+
+### Deploy from Git
+
+<Steps>
+
+<Step title="Push to GitHub">
+Initialize git and push your project:
+
+```bash
+cd my-dapp
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin https://github.com/yourusername/my-dapp.git
+git push -u origin main
+```
+
+<Note>
+If you used the `--git` flag during project creation, git is already initialized.
+</Note>
+</Step>
+
+<Step title="Import to Vercel">
+1. Go to [vercel.com](https://vercel.com) and sign in with GitHub
+2. Click "Add New" → "Project"
+3. Import your GitHub repository
+4. Vercel auto-detects Next.js configuration
+</Step>
+
+<Step title="Configure environment variables">
+In the Vercel import flow:
+
+1. Expand "Environment Variables"
+2. Add each variable from your `.env.local`:
+   - `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`
+   - `NEXT_PUBLIC_CONTRACT_ADDRESS`
+   - (other provider-specific variables)
+
+<Warning>
+Do not include quotes around values in Vercel's environment variable inputs.
+</Warning>
+</Step>
+
+<Step title="Deploy">
+Click "Deploy" and wait 1-2 minutes for the build to complete.
+
+Your dApp will be live at `your-project.vercel.app`!
+</Step>
+
+</Steps>
+
+### Deploy from CLI
+
+<Steps>
+
+<Step title="Install Vercel CLI">
+```bash
+npm i -g vercel
+```
+</Step>
+
+<Step title="Deploy">
+```bash
+vercel
+```
+
+Follow the prompts to:
+- Link to existing project or create new
+- Confirm settings
+- Deploy
+</Step>
+
+<Step title="Add environment variables">
+```bash
+vercel env add NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID production
+# Paste your value when prompted
+
+vercel env add NEXT_PUBLIC_CONTRACT_ADDRESS production
+# Repeat for all variables
+```
+</Step>
+
+<Step title="Redeploy with variables">
+```bash
+vercel --prod
+```
+</Step>
+
+</Steps>
+
+### Automatic Deployments
+
+After initial setup, Vercel automatically deploys:
+
+- **Production**: Every push to `main` branch
+- **Preview**: Every push to other branches and pull requests
+
+<Info>
+Preview deployments are perfect for testing changes before merging to production.
+</Info>
+
+## Other Platforms
+
+### Netlify
+
+<Steps>
+
+<Step title="Create netlify.toml">
+Add build configuration to your project:
+
+```toml netlify.toml
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+```
+</Step>
+
+<Step title="Deploy">
+1. Connect your Git repository at [netlify.com](https://netlify.com)
+2. Add environment variables in Site settings → Environment variables
+3. Deploy
+</Step>
+
+</Steps>
+
+### Railway
+
+<Steps>
+
+<Step title="Deploy from GitHub">
+1. Go to [railway.app](https://railway.app)
+2. Click "New Project" → "Deploy from GitHub repo"
+3. Select your repository
+</Step>
+
+<Step title="Configure">
+1. Railway auto-detects Next.js
+2. Add environment variables in Variables tab
+3. Deploy
+</Step>
+
+</Steps>
+
+### Self-Hosted (VPS)
+
+<Steps>
+
+<Step title="Build for production">
+```bash
+npm run build
+```
+</Step>
+
+<Step title="Start production server">
+```bash
+npm start
+```
+
+Or use PM2 for process management:
+
+```bash
+npm i -g pm2
+pm2 start npm --name "my-dapp" -- start
+pm2 save
+pm2 startup
+```
+</Step>
+
+<Step title="Configure reverse proxy">
+Use nginx or Apache to proxy to your Next.js server (default port 3000).
+
+Example nginx configuration:
+
+```nginx
+server {
+  listen 80;
+  server_name yourdomain.com;
+
+  location / {
+    proxy_pass http://localhost:3000;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_cache_bypass $http_upgrade;
+  }
+}
+```
+</Step>
+
+</Steps>
+
+## Environment Variables in Production
+
+### Required Variables
+
+Ensure these are set in your deployment platform:
+
+<Tabs>
+  <Tab title="RainbowKit/ConnectKit">
+    ```bash
+    NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=xxx
+    NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
+    ```
+  </Tab>
+  <Tab title="Privy">
+    ```bash
+    NEXT_PUBLIC_PRIVY_APP_ID=xxx
+    NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
+    ```
+  </Tab>
+  <Tab title="Dynamic">
+    ```bash
+    NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID=xxx
+    NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
+    ```
+  </Tab>
+  <Tab title="Thirdweb">
+    ```bash
+    NEXT_PUBLIC_THIRDWEB_CLIENT_ID=xxx
+    NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
+    ```
+  </Tab>
+  <Tab title="Reown">
+    ```bash
+    NEXT_PUBLIC_REOWN_PROJECT_ID=xxx
+    NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
+    ```
+  </Tab>
+</Tabs>
+
+### Security Best Practices
+
+<Warning>
+Only expose `NEXT_PUBLIC_*` variables. Never expose:
+- Private keys
+- Wallet mnemonics
+- Backend API secrets
+- Database credentials
+</Warning>
+
+<AccordionGroup>
+
+<Accordion title="Use production API keys">
+Many providers offer separate API keys for development and production. Always use production keys when deploying:
+
+- Create separate projects in provider dashboards for dev/prod
+- Use restrictive domains in production (not `localhost`)
+- Rotate keys regularly
+</Accordion>
+
+<Accordion title="Configure allowed domains">
+Most wallet providers require you to whitelist domains in their dashboards:
+
+**Development:**
+- `http://localhost:3000`
+- `http://localhost:3001`
+
+**Production:**
+- `https://yourdomain.com`
+- `https://www.yourdomain.com`
+- Vercel preview URLs: `https://*.vercel.app`
+</Accordion>
+
+<Accordion title="Enable HTTPS">
+All modern wallet providers require HTTPS in production:
+
+- Vercel provides automatic SSL
+- Netlify provides automatic SSL
+- Self-hosted: Use Let's Encrypt with certbot
+
+```bash
+# Self-hosted SSL with certbot
+sudo certbot --nginx -d yourdomain.com
+```
+</Accordion>
+
+</AccordionGroup>
+
+## Custom Domains
+
+### Vercel
+
+<Steps>
+
+<Step title="Add domain">
+1. Go to Project Settings → Domains
+2. Enter your domain name
+3. Click "Add"
+</Step>
+
+<Step title="Configure DNS">
+Add these records to your domain's DNS:
+
+```
+Type: A
+Name: @
+Value: 76.76.21.21
+
+Type: CNAME
+Name: www
+Value: cname.vercel-dns.com
+```
+</Step>
+
+<Step title="Wait for propagation">
+DNS changes take 1-48 hours. Vercel automatically provisions SSL certificates.
+</Step>
+
+</Steps>
+
+### Netlify
+
+Similar process:
+1. Site settings → Domain management → Add custom domain
+2. Configure DNS with Netlify's nameservers or CNAME
+3. Automatic SSL provisioning
+
+## Provider Dashboard Configuration
+
+<Warning>
+After deploying, update allowed domains in your wallet provider dashboards.
+</Warning>
+
+### WalletConnect/Reown
+
+1. Go to [cloud.walletconnect.com](https://cloud.walletconnect.com)
+2. Select your project
+3. Add your production URL to allowed domains
+
+### Privy
+
+1. Go to [dashboard.privy.io](https://dashboard.privy.io)
+2. Settings → Login Methods
+3. Add production domain to "Allowed domains"
+
+### Dynamic
+
+1. Go to [app.dynamic.xyz](https://app.dynamic.xyz)
+2. Developer → Allowed Origins
+3. Add production domain
+
+### Thirdweb
+
+1. Go to [thirdweb.com/dashboard](https://thirdweb.com/dashboard)
+2. Settings → API Keys → Your Key
+3. Add production domain to "Allowed Domains"
+
+## Performance Optimization
+
+### Enable Edge Runtime (Optional)
+
+For faster response times globally, convert API routes to Edge Functions:
+
+```typescript app/api/route.ts
+export const runtime = 'edge';
+
+export async function GET() {
+  // Your API logic
+}
+```
+
+### Configure Caching
+
+Optimize RPC calls by caching on-chain data:
+
+```typescript
+import { unstable_cache } from 'next/cache';
+
+const getCachedBalance = unstable_cache(
+  async (address) => getBalance(address),
+  ['balance'],
+  { revalidate: 60 } // Cache for 60 seconds
+);
+```
+
+## Monitoring and Analytics
+
+### Vercel Analytics
+
+Enable built-in analytics:
+
+```bash
+npm install @vercel/analytics
+```
+
+```typescript app/layout.tsx
+import { Analytics } from '@vercel/analytics/react';
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        {children}
+        <Analytics />
+      </body>
+    </html>
+  );
+}
+```
+
+### Error Tracking
+
+Integrate Sentry for error monitoring:
+
+```bash
+npm install @sentry/nextjs
+npx @sentry/wizard -i nextjs
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+
+<Accordion title="Build fails in production">
+**Common causes:**
+- TypeScript errors (strict mode in production)
+- Missing environment variables
+- Node.js version mismatch
+
+**Solutions:**
+1. Run `npm run build` locally to catch errors
+2. Check build logs for specific errors
+3. Ensure Node.js version matches local (specified in `package.json` engines)
+</Accordion>
+
+<Accordion title="Wallet connection fails in production">
+**Common causes:**
+- Domain not whitelisted in provider dashboard
+- Missing `NEXT_PUBLIC_` prefix on environment variables
+- HTTP instead of HTTPS
+
+**Solutions:**
+1. Verify environment variables are set in deployment platform
+2. Check provider dashboard has production domain listed
+3. Ensure you're accessing via HTTPS
+4. Check browser console for specific errors
+</Accordion>
+
+<Accordion title="Environment variables not updating">
+**Solution:**
+After changing environment variables, redeploy:
+
+```bash
+# Vercel
+vercel --prod
+
+# Or trigger redeploy in dashboard
+```
+
+Environment variables are injected at build time, not runtime.
+</Accordion>
+
+<Accordion title="RPC errors in production">
+**Common causes:**
+- Rate limiting from public RPC endpoints
+- Network configuration issues
+
+**Solutions:**
+1. Use dedicated RPC providers (Alchemy, Infura, QuickNode)
+2. Add RPC URLs as environment variables
+3. Implement fallback RPC providers
+
+```typescript
+import { http } from 'viem';
+import { mainnet } from 'viem/chains';
+
+const transport = http([
+  process.env.NEXT_PUBLIC_RPC_URL_PRIMARY,
+  process.env.NEXT_PUBLIC_RPC_URL_FALLBACK,
+]);
+```
+</Accordion>
+
+</AccordionGroup>
+
+## Best Practices Checklist
+
+<Steps>
+
+<Step title="Before deploying">
+- [ ] Test all wallet connections locally
+- [ ] Verify contract interactions work
+- [ ] Run `npm run build` successfully
+- [ ] Update contract addresses to mainnet (if applicable)
+- [ ] Prepare production API keys
+</Step>
+
+<Step title="During deployment">
+- [ ] Set all required environment variables
+- [ ] Use production API keys
+- [ ] Configure custom domain (optional)
+- [ ] Enable automatic deployments from Git
+</Step>
+
+<Step title="After deployment">
+- [ ] Update provider dashboards with production domain
+- [ ] Test wallet connections on production
+- [ ] Verify contract interactions work
+- [ ] Set up monitoring and error tracking
+- [ ] Configure analytics
+</Step>
+
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+
+<Card title="Project Structure" icon="folder-tree" href="/guides/project-structure">
+Understand your dApp's file structure
+</Card>
+
+<Card title="Environment Variables" icon="key" href="/guides/environment-variables">
+Learn about all environment variable options
+</Card>
+
+<Card title="CLI Reference" icon="code" href="/cli/options">
+Explore all CLI flags and options
+</Card>
+
+<Card title="GitHub" icon="github" href="https://github.com/0xmihirsahu/create-nextjs-dapp">
+View source code and contribute
+</Card>
+
+</CardGroup>

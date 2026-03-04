@@ -1,0 +1,611 @@
+---
+title: Privy
+description: Email, social, and wallet login with embedded wallets for seamless onboarding
+---
+
+# Privy
+
+<Card title="Official Documentation" icon="book" href="https://docs.privy.io">
+  Visit the official Privy documentation
+</Card>
+
+## Overview
+
+Privy enables seamless user onboarding with email, social login, and wallet connections. It's designed for **progressive web3 onboarding** - users can start with familiar login methods and upgrade to self-custodial wallets when ready.
+
+**Best for**: Consumer-facing applications that need to onboard non-crypto users with email/social login while supporting traditional wallet connections.
+
+## Key Features
+
+- **Email Authentication** - Passwordless login via email
+- **Social Login** - Google, Twitter, Discord, GitHub, Apple, and more
+- **Embedded Wallets** - Auto-created wallets for users without crypto wallets
+- **Progressive Onboarding** - Users can start simple, upgrade to self-custody later
+- **Cross-App Wallets** - Wallets work across all Privy-powered apps
+- **Multi-Chain Support** - EVM and Solana chains
+- **Fiat On-Ramps** - Built-in fiat-to-crypto conversion
+- **wagmi Integration** - Full wagmi compatibility for EVM chains
+
+## Installation
+
+Scaffold a new project with Privy:
+
+<CodeGroup>
+```bash npm
+npx create-nextjs-dapp my-dapp --chain evm --wallet privy
+```
+
+```bash yarn
+yarn create nextjs-dapp my-dapp --chain evm --wallet privy
+```
+
+```bash pnpm
+pnpm create nextjs-dapp my-dapp --chain evm --wallet privy
+```
+
+```bash bun
+bunx create-nextjs-dapp my-dapp --chain evm --wallet privy
+```
+</CodeGroup>
+
+### Dependencies
+
+The CLI installs these packages:
+
+```json package.json
+{
+  "dependencies": {
+    "@privy-io/react-auth": "^2.4.1",
+    "@privy-io/wagmi": "^1.0.2",
+    "wagmi": "^2.19.5",
+    "viem": "^2.44.4",
+    "@tanstack/react-query": "^5.0.0"
+  }
+}
+```
+
+## Configuration
+
+### Environment Variables
+
+Create a `.env.local` file:
+
+```bash .env.local
+NEXT_PUBLIC_PRIVY_APP_ID=your_app_id_here
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
+```
+
+<Steps>
+  <Step title="Get a Privy App ID">
+    1. Visit [Privy Dashboard](https://dashboard.privy.io)
+    2. Sign up or log in
+    3. Create a new app
+    4. Go to Settings and copy your App ID
+  </Step>
+  
+  <Step title="Configure Authentication Methods">
+    In the Privy Dashboard, enable the login methods you want:
+    - Email (enabled by default)
+    - Social providers (Google, Twitter, Discord, etc.)
+    - Wallet providers (MetaMask, Coinbase Wallet, etc.)
+  </Step>
+  
+  <Step title="Add to your .env.local">
+    ```bash
+    NEXT_PUBLIC_PRIVY_APP_ID=clxxxx...
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  The Privy App ID is **required** - the app will not function without it.
+</Warning>
+
+### Provider Setup
+
+The CLI generates a `Providers.tsx` component:
+
+```tsx components/Providers.tsx
+"use client";
+
+import { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { WagmiProvider } from "wagmi";
+import { PrivyProvider } from "@privy-io/react-auth";
+import { PrivyWagmiConnector } from "@privy-io/wagmi";
+import { createConfig, http } from "wagmi";
+import { ThemeProvider } from "next-themes";
+import { sepolia } from "wagmi/chains";
+
+const queryClient = new QueryClient();
+
+const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "";
+
+const config = createConfig({
+  chains: [sepolia],
+  transports: {
+    [sepolia.id]: http(),
+  },
+  ssr: true,
+});
+
+const Providers = ({ children }: { children: ReactNode }) => {
+  if (!appId) {
+    console.warn(
+      "Missing NEXT_PUBLIC_PRIVY_APP_ID. Get one at https://dashboard.privy.io/"
+    );
+  }
+
+  return (
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <PrivyProvider
+        appId={appId}
+        config={{
+          appearance: {
+            theme: "dark",
+          },
+          embeddedWallets: {
+            createOnLogin: "users-without-wallets",
+          },
+          defaultChain: sepolia,
+          supportedChains: [sepolia],
+        }}
+      >
+        <QueryClientProvider client={queryClient}>
+          <PrivyWagmiConnector config={config}>
+            <WagmiProvider config={config}>{children}</WagmiProvider>
+          </PrivyWagmiConnector>
+        </QueryClientProvider>
+      </PrivyProvider>
+    </ThemeProvider>
+  );
+};
+
+export { Providers };
+```
+
+## Usage
+
+### Authentication
+
+The CLI generates a Header component with Privy authentication:
+
+```tsx components/Header.tsx
+"use client";
+
+import { usePrivy } from "@privy-io/react-auth";
+import { useAccount, useDisconnect } from "wagmi";
+import { ThemeToggle } from "./ThemeToggle";
+
+const Header = () => {
+  const { login, logout, authenticated, ready } = usePrivy();
+  const { address, chain } = useAccount();
+  const { disconnect } = useDisconnect();
+
+  const handleDisconnect = () => {
+    disconnect();
+    logout();
+  };
+
+  const formatAddress = (addr: string) => {
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
+
+  return (
+    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
+      <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">web3_starter</span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          {!ready ? (
+            <div className="px-4 py-2 text-sm text-muted-foreground">
+              loading...
+            </div>
+          ) : !authenticated ? (
+            <button
+              onClick={login}
+              className="px-4 py-2 text-sm border border-primary"
+            >
+              connect wallet
+            </button>
+          ) : (
+            <div className="flex items-center gap-3 text-sm">
+              {chain && (
+                <span className="px-3 py-1.5 border border-border">
+                  {chain.name?.toLowerCase()}
+                </span>
+              )}
+              {address && (
+                <button
+                  onClick={handleDisconnect}
+                  className="px-3 py-1.5 border border-primary"
+                >
+                  {formatAddress(address)}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+};
+
+export { Header };
+```
+
+### Privy Hooks
+
+Use Privy hooks to manage authentication:
+
+```tsx
+import { usePrivy } from "@privy-io/react-auth";
+
+const MyComponent = () => {
+  const {
+    ready,           // SDK initialization complete
+    authenticated,   // User is logged in
+    user,           // User data (email, wallet, etc.)
+    login,          // Open login modal
+    logout,         // Log user out
+    linkEmail,      // Link additional email
+    linkWallet,     // Link external wallet
+    unlinkEmail,    // Unlink email
+    unlinkWallet,   // Unlink wallet
+    exportWallet,   // Export embedded wallet
+  } = usePrivy();
+
+  return (
+    <div>
+      {authenticated ? (
+        <div>
+          <p>Welcome, {user?.email?.address}</p>
+          <button onClick={logout}>Logout</button>
+        </div>
+      ) : (
+        <button onClick={login}>Login</button>
+      )}
+    </div>
+  );
+};
+```
+
+### User Data
+
+Access comprehensive user information:
+
+```tsx
+import { usePrivy } from "@privy-io/react-auth";
+
+const UserProfile = () => {
+  const { user } = usePrivy();
+
+  return (
+    <div>
+      {/* Email */}
+      {user?.email && <p>Email: {user.email.address}</p>}
+      
+      {/* Linked Wallets */}
+      {user?.wallet && <p>Wallet: {user.wallet.address}</p>}
+      
+      {/* Social Accounts */}
+      {user?.google && <p>Google: {user.google.email}</p>}
+      {user?.twitter && <p>Twitter: @{user.twitter.username}</p>}
+      {user?.discord && <p>Discord: {user.discord.username}</p>}
+    </div>
+  );
+};
+```
+
+### Wagmi Integration
+
+Use wagmi hooks with Privy's wallet:
+
+```tsx
+import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import { usePrivy } from "@privy-io/react-auth";
+
+const ContractInteraction = () => {
+  const { authenticated } = usePrivy();
+  const { address } = useAccount();
+  
+  const { data: greeting } = useReadContract({
+    address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`,
+    abi,
+    functionName: "greeting",
+  });
+
+  const { writeContract, isPending } = useWriteContract();
+
+  const handleUpdate = () => {
+    writeContract({
+      address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`,
+      abi,
+      functionName: "setGreeting",
+      args: ["Hello from Privy!"],
+    });
+  };
+
+  if (!authenticated) {
+    return <p>Please log in</p>;
+  }
+
+  return (
+    <div>
+      <p>Address: {address}</p>
+      <p>Greeting: {greeting as string}</p>
+      <button onClick={handleUpdate} disabled={isPending}>
+        Update
+      </button>
+    </div>
+  );
+};
+```
+
+## Customization
+
+### Appearance
+
+Customize the login modal appearance:
+
+```tsx components/Providers.tsx
+<PrivyProvider
+  appId={appId}
+  config={{
+    appearance: {
+      theme: "dark",
+      accentColor: "#7b3fe4",
+      logo: "https://your-domain.com/logo.png",
+      showWalletLoginFirst: false,  // Show email/social first
+    },
+  }}
+>
+  {children}
+</PrivyProvider>
+```
+
+### Login Methods
+
+Configure which login methods to show:
+
+```tsx
+<PrivyProvider
+  appId={appId}
+  config={{
+    loginMethods: ["email", "google", "twitter", "wallet"],
+    appearance: {
+      showWalletLoginFirst: false,  // Email/social first
+    },
+  }}
+>
+  {children}
+</PrivyProvider>
+```
+
+### Embedded Wallet Settings
+
+Control embedded wallet creation:
+
+```tsx
+<PrivyProvider
+  appId={appId}
+  config={{
+    embeddedWallets: {
+      createOnLogin: "users-without-wallets",  // Auto-create for users without wallets
+      // OR
+      createOnLogin: "all-users",              // Always create embedded wallet
+      // OR
+      createOnLogin: "off",                    // Never create embedded wallet
+    },
+  }}
+>
+  {children}
+</PrivyProvider>
+```
+
+### Multi-Chain Configuration
+
+Support multiple chains:
+
+```tsx
+import { mainnet, polygon, optimism, sepolia } from "wagmi/chains";
+
+const config = createConfig({
+  chains: [mainnet, polygon, optimism, sepolia],
+  transports: {
+    [mainnet.id]: http(),
+    [polygon.id]: http(),
+    [optimism.id]: http(),
+    [sepolia.id]: http(),
+  },
+  ssr: true,
+});
+
+<PrivyProvider
+  appId={appId}
+  config={{
+    defaultChain: mainnet,
+    supportedChains: [mainnet, polygon, optimism, sepolia],
+  }}
+>
+  {/* ... */}
+</PrivyProvider>
+```
+
+### Legal Policies
+
+Add terms of service and privacy policy links:
+
+```tsx
+<PrivyProvider
+  appId={appId}
+  config={{
+    legal: {
+      termsAndConditionsUrl: "https://your-domain.com/terms",
+      privacyPolicyUrl: "https://your-domain.com/privacy",
+    },
+  }}
+>
+  {children}
+</PrivyProvider>
+```
+
+## API Reference
+
+### Official Documentation
+
+<CardGroup cols={2}>
+  <Card title="Privy Docs" icon="book" href="https://docs.privy.io">
+    Complete Privy documentation
+  </Card>
+  <Card title="Privy Dashboard" icon="gear" href="https://dashboard.privy.io">
+    Manage your app settings
+  </Card>
+  <Card title="wagmi Docs" icon="plug" href="https://wagmi.sh">
+    Wagmi hooks and utilities
+  </Card>
+  <Card title="Migration Guides" icon="arrows-rotate" href="https://docs.privy.io/guide/migration">
+    Upgrade to latest version
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### App ID Missing
+
+**Issue**: "Missing App ID" warning in console
+
+**Solution**: 
+1. Create an app at [Privy Dashboard](https://dashboard.privy.io)
+2. Copy the App ID from Settings
+3. Add to `.env.local`:
+   ```bash
+   NEXT_PUBLIC_PRIVY_APP_ID=clxxxx...
+   ```
+4. Restart your dev server
+
+### Login Modal Not Opening
+
+**Issue**: `login()` function doesn't open the modal
+
+**Solution**:
+1. Verify `PrivyProvider` wraps your app
+2. Check that `ready` is `true` before calling `login()`
+3. Ensure you're in a client component (`"use client"`)
+4. Check browser console for errors
+
+### Embedded Wallet Not Created
+
+**Issue**: Users don't get an embedded wallet
+
+**Solution**: Configure embedded wallet creation:
+
+```tsx
+<PrivyProvider
+  config={{
+    embeddedWallets: {
+      createOnLogin: "users-without-wallets",
+    },
+  }}
+>
+```
+
+### Wagmi Hooks Not Working
+
+**Issue**: wagmi hooks return undefined or error
+
+**Solution**: Ensure proper provider nesting:
+
+```tsx
+<PrivyProvider>
+  <QueryClientProvider>
+    <PrivyWagmiConnector config={config}>
+      <WagmiProvider config={config}>
+        {/* Your components here */}
+      </WagmiProvider>
+    </PrivyWagmiConnector>
+  </QueryClientProvider>
+</PrivyProvider>
+```
+
+### Social Login Not Working
+
+**Issue**: Google/Twitter login fails
+
+**Solution**:
+1. Enable the social provider in Privy Dashboard
+2. Configure OAuth redirect URLs
+3. Verify your domain is whitelisted
+4. Check that popup blockers are disabled
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Progressive Onboarding">
+    Start users with email/social, add wallet later:
+    
+    ```tsx
+    const { linkWallet } = usePrivy();
+    
+    // After user is comfortable with your app:
+    <button onClick={linkWallet}>
+      Upgrade to Self-Custody Wallet
+    </button>
+    ```
+  </Accordion>
+  
+  <Accordion title="Handle Both Auth States">
+    Support both Privy auth and wagmi wallet state:
+    
+    ```tsx
+    const { authenticated, ready } = usePrivy();
+    const { address, isConnected } = useAccount();
+    
+    if (!ready) return <div>Loading...</div>;
+    if (!authenticated) return <button>Login</button>;
+    if (!isConnected) return <div>Connecting wallet...</div>;
+    ```
+  </Accordion>
+  
+  <Accordion title="Export Wallet Option">
+    Let users export their embedded wallet:
+    
+    ```tsx
+    const { exportWallet } = usePrivy();
+    
+    <button onClick={exportWallet}>
+      Export Private Key
+    </button>
+    ```
+  </Accordion>
+  
+  <Accordion title="Account Linking">
+    Allow users to link multiple authentication methods:
+    
+    ```tsx
+    const { linkEmail, linkWallet, linkGoogle } = usePrivy();
+    
+    // Let users link additional methods after login
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Chain Configuration" icon="link" href="/config/chains">
+    Configure different blockchain networks
+  </Card>
+  <Card title="Project Structure" icon="folder" href="/guides/project-structure">
+    Understand the generated project structure
+  </Card>
+  <Card title="Environment Variables" icon="key" href="/guides/environment-variables">
+    Learn about environment configuration
+  </Card>
+  <Card title="Deployment" icon="rocket" href="/guides/deployment">
+    Deploy your dApp to production
+  </Card>
+</CardGroup>

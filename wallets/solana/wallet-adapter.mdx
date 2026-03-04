@@ -1,0 +1,495 @@
+---
+title: Solana Wallet Adapter
+description: Standard Solana wallet connection library (recommended)
+---
+
+## Overview
+
+The [Solana Wallet Adapter](https://github.com/solana-labs/wallet-adapter) is the standard, community-maintained library for connecting Solana wallets to web applications. It's the recommended choice for most Solana dApps due to its simplicity, reliability, and comprehensive wallet support.
+
+**Best for**: Standard Solana applications that need reliable wallet connections without additional authentication features.
+
+## Key Features
+
+- **Standard Integration**: Official Solana wallet connection library
+- **Wide Wallet Support**: Phantom, Solflare, Backpack, Glow, and 20+ other Solana wallets
+- **Auto-Connect**: Automatically reconnects to previously connected wallets
+- **React Components**: Pre-built UI components for wallet connection
+- **No API Key Required**: Works out of the box without external services
+- **TypeScript Support**: Full TypeScript types included
+
+## Installation
+
+Scaffold a new project with Solana Wallet Adapter:
+
+```bash
+npx create-nextjs-dapp@latest
+```
+
+When prompted:
+1. Choose **Solana** as your blockchain
+2. Select **Solana Wallet Adapter** as your wallet provider
+
+### Dependencies Installed
+
+The CLI automatically installs these packages:
+
+```json
+{
+  "@solana/web3.js": "^1.98.0",
+  "@solana/wallet-adapter-react": "^0.15.35",
+  "@solana/wallet-adapter-react-ui": "^0.9.35",
+  "@solana/wallet-adapter-wallets": "^0.19.32"
+}
+```
+
+## Configuration
+
+### Environment Variables
+
+No API keys required! The Wallet Adapter works out of the box.
+
+Optional configuration in `.env.local`:
+
+```bash
+# Program configuration (optional)
+NEXT_PUBLIC_PROGRAM_ID=YourProgramAddressHere
+
+# RPC endpoint (optional, defaults to public devnet)
+NEXT_PUBLIC_RPC_ENDPOINT=https://api.devnet.solana.com
+```
+
+### Provider Setup
+
+The generated `components/Providers.tsx` sets up the wallet adapter:
+
+```tsx
+"use client";
+
+import { ReactNode, useMemo } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  ConnectionProvider,
+  WalletProvider,
+} from "@solana/wallet-adapter-react";
+import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
+import {
+  PhantomWalletAdapter,
+  SolflareWalletAdapter,
+} from "@solana/wallet-adapter-wallets";
+import { clusterApiUrl } from "@solana/web3.js";
+import { ThemeProvider } from "next-themes";
+
+import "@solana/wallet-adapter-react-ui/styles.css";
+
+const queryClient = new QueryClient();
+
+// Use devnet for development, mainnet-beta for production
+const network = "devnet";
+
+const Providers = ({ children }: { children: ReactNode }) => {
+  const endpoint = useMemo(() => clusterApiUrl(network), []);
+
+  const wallets = useMemo(
+    () => [new PhantomWalletAdapter(), new SolflareWalletAdapter()],
+    []
+  );
+
+  return (
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <ConnectionProvider endpoint={endpoint}>
+        <WalletProvider wallets={wallets} autoConnect>
+          <WalletModalProvider>
+            <QueryClientProvider client={queryClient}>
+              {children}
+            </QueryClientProvider>
+          </WalletModalProvider>
+        </WalletProvider>
+      </ConnectionProvider>
+    </ThemeProvider>
+  );
+};
+
+export { Providers };
+```
+
+## Usage
+
+### Wallet Connection Button
+
+Use the pre-built `WalletMultiButton` component:
+
+```tsx
+"use client";
+
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+
+const Header = () => {
+  return (
+    <header>
+      <WalletMultiButton />
+    </header>
+  );
+};
+
+export { Header };
+```
+
+### Access Connected Wallet
+
+Use the `useWallet` hook to interact with the connected wallet:
+
+```tsx
+"use client";
+
+import { useWallet, useConnection } from "@solana/wallet-adapter-react";
+import { LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { useEffect, useState } from "react";
+
+const WalletInfo = () => {
+  const { publicKey, connected, wallet } = useWallet();
+  const { connection } = useConnection();
+  const [balance, setBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (publicKey) {
+      connection.getBalance(publicKey).then((bal) => {
+        setBalance(bal / LAMPORTS_PER_SOL);
+      });
+    }
+  }, [publicKey, connection]);
+
+  if (!connected) {
+    return <div>Connect your wallet</div>;
+  }
+
+  return (
+    <div>
+      <p>Wallet: {wallet?.adapter.name}</p>
+      <p>Address: {publicKey?.toBase58()}</p>
+      <p>Balance: {balance?.toFixed(4)} SOL</p>
+    </div>
+  );
+};
+```
+
+### Sign and Send Transactions
+
+```tsx
+import { useWallet, useConnection } from "@solana/wallet-adapter-react";
+import {
+  Transaction,
+  SystemProgram,
+  LAMPORTS_PER_SOL,
+  PublicKey,
+} from "@solana/web3.js";
+
+const SendSol = () => {
+  const { publicKey, sendTransaction } = useWallet();
+  const { connection } = useConnection();
+
+  const handleSend = async () => {
+    if (!publicKey) return;
+
+    const transaction = new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: publicKey,
+        toPubkey: new PublicKey("recipient address"),
+        lamports: 0.1 * LAMPORTS_PER_SOL,
+      })
+    );
+
+    const signature = await sendTransaction(transaction, connection);
+    await connection.confirmTransaction(signature, "confirmed");
+    
+    console.log("Transaction signature:", signature);
+  };
+
+  return <button onClick={handleSend}>Send 0.1 SOL</button>;
+};
+```
+
+## Customization
+
+### Add More Wallets
+
+Add additional wallet adapters to support more wallets:
+
+```tsx
+import {
+  PhantomWalletAdapter,
+  SolflareWalletAdapter,
+  BackpackWalletAdapter,
+  GlowWalletAdapter,
+  LedgerWalletAdapter,
+} from "@solana/wallet-adapter-wallets";
+
+const wallets = useMemo(
+  () => [
+    new PhantomWalletAdapter(),
+    new SolflareWalletAdapter(),
+    new BackpackWalletAdapter(),
+    new GlowWalletAdapter(),
+    new LedgerWalletAdapter(),
+  ],
+  []
+);
+```
+
+### Custom RPC Endpoint
+
+Replace the default RPC endpoint with a custom one:
+
+```tsx
+const endpoint = useMemo(
+  () => process.env.NEXT_PUBLIC_RPC_ENDPOINT || "https://api.devnet.solana.com",
+  []
+);
+```
+
+### Disable Auto-Connect
+
+Turn off automatic reconnection:
+
+```tsx
+<WalletProvider wallets={wallets} autoConnect={false}>
+  {children}
+</WalletProvider>
+```
+
+### Custom Wallet Button
+
+Create your own wallet connection UI:
+
+```tsx
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
+
+const CustomWalletButton = () => {
+  const { connected, disconnect, publicKey } = useWallet();
+  const { setVisible } = useWalletModal();
+
+  if (connected) {
+    return (
+      <button onClick={disconnect}>
+        {publicKey?.toBase58().slice(0, 8)}...
+      </button>
+    );
+  }
+
+  return <button onClick={() => setVisible(true)}>Connect Wallet</button>;
+};
+```
+
+### Switch Networks
+
+Change between devnet, testnet, and mainnet:
+
+```tsx
+import { clusterApiUrl } from "@solana/web3.js";
+
+// Development
+const endpoint = clusterApiUrl("devnet");
+
+// Testing
+const endpoint = clusterApiUrl("testnet");
+
+// Production
+const endpoint = clusterApiUrl("mainnet-beta");
+```
+
+## API Reference
+
+### Official Documentation
+
+- [Solana Wallet Adapter Docs](https://github.com/solana-labs/wallet-adapter)
+- [Solana Web3.js Reference](https://solana-labs.github.io/solana-web3.js/)
+- [Supported Wallets List](https://github.com/solana-labs/wallet-adapter#wallets)
+
+### Key Hooks
+
+- `useWallet()` - Access wallet state and methods
+- `useConnection()` - Access Solana connection
+- `useAnchorWallet()` - Get Anchor-compatible wallet
+- `useWalletModal()` - Control wallet selection modal
+
+## Troubleshooting
+
+### Wallet Not Connecting
+
+<AccordionGroup>
+  <Accordion title="Wallet extension not detected">
+    **Issue**: Wallet adapter can't find the browser extension.
+
+    **Solutions**:
+    - Ensure the wallet extension (Phantom, Solflare, etc.) is installed
+    - Refresh the page after installing the extension
+    - Check that the extension is enabled in your browser
+    - Try a different browser if the issue persists
+  </Accordion>
+
+  <Accordion title="Auto-connect fails after page refresh">
+    **Issue**: Wallet doesn't reconnect automatically.
+
+    **Solutions**:
+    - Check that `autoConnect` is set to `true` in WalletProvider
+    - Verify the wallet extension has permission to auto-connect
+    - Clear browser cache and localStorage if the issue persists
+    ```tsx
+    <WalletProvider wallets={wallets} autoConnect>
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Transaction Errors
+
+<AccordionGroup>
+  <Accordion title="Transaction signature verification failure">
+    **Issue**: Transactions fail during signing.
+
+    **Solutions**:
+    - Ensure the user approves the transaction in their wallet
+    - Check that the wallet has sufficient SOL for transaction fees
+    - Verify the transaction is properly constructed before signing
+    - Use `await connection.confirmTransaction()` to wait for confirmation
+  </Accordion>
+
+  <Accordion title="Insufficient funds for transaction">
+    **Issue**: Transaction fails due to low balance.
+
+    **Solutions**:
+    - On devnet, use the [Solana Faucet](https://faucet.solana.com/) to get test SOL
+    - Check balance before attempting transactions:
+    ```tsx
+    const balance = await connection.getBalance(publicKey);
+    if (balance < LAMPORTS_PER_SOL * 0.01) {
+      throw new Error("Insufficient funds");
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Network Issues
+
+<AccordionGroup>
+  <Accordion title="RPC endpoint not responding">
+    **Issue**: Connection to Solana network fails.
+
+    **Solutions**:
+    - Use a reliable RPC provider (Helius, QuickNode, Alchemy)
+    - Add fallback RPC endpoints:
+    ```tsx
+    const endpoints = [
+      process.env.NEXT_PUBLIC_RPC_ENDPOINT,
+      "https://api.devnet.solana.com",
+      clusterApiUrl("devnet"),
+    ];
+    ```
+    - Check [Solana Status](https://status.solana.com/) for network issues
+  </Accordion>
+
+  <Accordion title="Wrong network selected">
+    **Issue**: Connecting to wrong cluster (devnet vs mainnet).
+
+    **Solutions**:
+    - Explicitly set the network in your provider:
+    ```tsx
+    const network = process.env.NODE_ENV === "production" 
+      ? "mainnet-beta" 
+      : "devnet";
+    ```
+    - Display current network to users
+    - Provide network switching UI if needed
+  </Accordion>
+</AccordionGroup>
+
+### Styling Issues
+
+<AccordionGroup>
+  <Accordion title="Wallet button styles not appearing">
+    **Issue**: WalletMultiButton has no styles.
+
+    **Solutions**:
+    - Import the CSS file in your Providers component:
+    ```tsx
+    import "@solana/wallet-adapter-react-ui/styles.css";
+    ```
+    - If using CSS modules, ensure global styles are imported
+    - Check for CSS conflicts with your app's styles
+  </Accordion>
+
+  <Accordion title="Modal appears behind other elements">
+    **Issue**: Wallet selection modal has z-index issues.
+
+    **Solutions**:
+    - Add custom CSS to increase modal z-index:
+    ```css
+    .wallet-adapter-modal-wrapper {
+      z-index: 9999 !important;
+    }
+    ```
+    - Ensure WalletModalProvider is high in your component tree
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Error Handling" icon="shield-check">
+    Always wrap wallet operations in try-catch blocks:
+    ```tsx
+    try {
+      const signature = await sendTransaction(tx, connection);
+      await connection.confirmTransaction(signature);
+    } catch (error) {
+      console.error("Transaction failed:", error);
+      // Show user-friendly error message
+    }
+    ```
+  </Card>
+
+  <Card title="Use Custom RPC" icon="server">
+    Don't rely on public RPC endpoints for production:
+    - Use [Helius](https://helius.xyz/)
+    - Use [QuickNode](https://www.quicknode.com/)
+    - Use [Alchemy](https://www.alchemy.com/solana)
+  </Card>
+
+  <Card title="Optimize Rerenders" icon="gauge">
+    Use `useMemo` for wallet adapters to prevent unnecessary rerenders:
+    ```tsx
+    const wallets = useMemo(
+      () => [new PhantomWalletAdapter()],
+      []
+    );
+    ```
+  </Card>
+
+  <Card title="TypeScript Types" icon="code">
+    Take advantage of full TypeScript support:
+    ```tsx
+    import type { WalletAdapterProps } from '@solana/wallet-adapter-base';
+    import type { PublicKey } from '@solana/web3.js';
+    ```
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Anchor Framework" icon="anchor" href="https://www.anchor-lang.com/">
+    Build Solana programs with the Anchor framework
+  </Card>
+
+  <Card title="Metaplex" icon="image" href="https://www.metaplex.com/">
+    Create and manage NFTs on Solana
+  </Card>
+
+  <Card title="Solana Cookbook" icon="book" href="https://solanacookbook.com/">
+    Learn common Solana development patterns
+  </Card>
+
+  <Card title="Web3.js Guide" icon="code" href="https://solana.com/docs/clients/javascript">
+    Master Solana's JavaScript library
+  </Card>
+</CardGroup>

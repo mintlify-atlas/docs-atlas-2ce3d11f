@@ -1,0 +1,542 @@
+---
+title: Dynamic (Solana)
+description: Multi-chain auth with embedded wallets and onramps for Solana
+---
+
+## Overview
+
+[Dynamic](https://www.dynamic.xyz/) is a comprehensive wallet and authentication platform that supports Solana alongside EVM chains. It provides embedded wallets, social logins, wallet connections, and built-in fiat onramps—all in a single SDK.
+
+**Best for**: Applications that need a complete user onboarding solution with wallet creation, social auth, and fiat-to-crypto conversion.
+
+## Key Features
+
+- **Multi-Chain Support**: Single integration for Solana, Ethereum, and other chains
+- **Embedded Wallets**: MPC-based wallets created automatically for new users
+- **Social Logins**: Email, Google, Twitter, Discord, and more
+- **Wallet Connections**: Phantom, Solflare, Backpack, and other Solana wallets
+- **Fiat Onramps**: Built-in support for buying crypto with credit cards
+- **NFT Gating**: Token and NFT-based access control
+- **Customizable UI**: Fully themeable components
+- **Analytics Dashboard**: User insights and metrics
+
+## Installation
+
+Scaffold a new project with Dynamic:
+
+```bash
+npx create-nextjs-dapp@latest
+```
+
+When prompted:
+1. Choose **Solana** as your blockchain
+2. Select **Dynamic** as your wallet provider
+
+### Dependencies Installed
+
+The CLI automatically installs:
+
+```json
+{
+  "@solana/web3.js": "^1.98.0",
+  "@solana/wallet-adapter-react": "^0.15.35",
+  "@solana/wallet-adapter-react-ui": "^0.9.35",
+  "@solana/wallet-adapter-wallets": "^0.19.32",
+  "@dynamic-labs/solana": "^4.0.0",
+  "@dynamic-labs/sdk-react-core": "^4.0.0"
+}
+```
+
+## Configuration
+
+### Get Your Dynamic Environment ID
+
+1. Go to [https://app.dynamic.xyz](https://app.dynamic.xyz)
+2. Sign up or log in
+3. Create a new project
+4. Navigate to **Developer** → **SDK & API Keys**
+5. Copy your Environment ID
+
+### Environment Variables
+
+Add to `.env.local`:
+
+```bash
+# Dynamic Environment ID (required)
+NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID=your_environment_id_here
+
+# Program configuration (optional)
+NEXT_PUBLIC_PROGRAM_ID=YourProgramAddressHere
+```
+
+### Provider Setup
+
+The generated `components/Providers.tsx` configures Dynamic for Solana:
+
+```tsx
+"use client";
+
+import { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { DynamicContextProvider } from "@dynamic-labs/sdk-react-core";
+import { SolanaWalletConnectors } from "@dynamic-labs/solana";
+import { ThemeProvider } from "next-themes";
+
+const queryClient = new QueryClient();
+
+const environmentId = process.env.NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID || "";
+
+const Providers = ({ children }: { children: ReactNode }) => {
+  if (!environmentId) {
+    console.warn(
+      "Missing NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID. Get one at https://app.dynamic.xyz/"
+    );
+  }
+
+  return (
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <DynamicContextProvider
+        settings={{
+          environmentId,
+          walletConnectors: [SolanaWalletConnectors],
+        }}
+      >
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      </DynamicContextProvider>
+    </ThemeProvider>
+  );
+};
+
+export { Providers };
+```
+
+## Usage
+
+### Connect Button
+
+Use Dynamic's built-in connect button:
+
+```tsx
+"use client";
+
+import { DynamicWidget } from "@dynamic-labs/sdk-react-core";
+
+const Header = () => {
+  return (
+    <header>
+      <DynamicWidget />
+    </header>
+  );
+};
+
+export { Header };
+```
+
+### Access User and Wallet
+
+Use Dynamic's hooks to access the connected wallet:
+
+```tsx
+"use client";
+
+import {
+  useDynamicContext,
+  useUserWallets,
+} from "@dynamic-labs/sdk-react-core";
+import { Connection, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { useEffect, useState } from "react";
+
+const connection = new Connection("https://api.devnet.solana.com");
+
+const WalletStatus = () => {
+  const { setShowAuthFlow, primaryWallet } = useDynamicContext();
+  const userWallets = useUserWallets();
+  const solanaWallet = userWallets.find((w) => w.chain === "SOL");
+  const [balance, setBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (solanaWallet?.address) {
+      const pubkey = new PublicKey(solanaWallet.address);
+      connection
+        .getBalance(pubkey)
+        .then((bal) => setBalance(bal / LAMPORTS_PER_SOL))
+        .catch(console.error);
+    }
+  }, [solanaWallet?.address]);
+
+  const connected = !!solanaWallet;
+
+  if (!connected) {
+    return (
+      <button onClick={() => setShowAuthFlow(true)}>
+        Connect Wallet
+      </button>
+    );
+  }
+
+  return (
+    <div>
+      <p>Address: {solanaWallet.address}</p>
+      <p>Balance: {balance?.toFixed(4)} SOL</p>
+      <p>Wallet: {solanaWallet.connector?.name}</p>
+    </div>
+  );
+};
+```
+
+### Sign and Send Transactions
+
+Sign transactions using Dynamic's wallet connector:
+
+```tsx
+import { useUserWallets } from "@dynamic-labs/sdk-react-core";
+import {
+  Connection,
+  Transaction,
+  SystemProgram,
+  PublicKey,
+  LAMPORTS_PER_SOL,
+} from "@solana/web3.js";
+
+const SendSol = () => {
+  const userWallets = useUserWallets();
+  const solanaWallet = userWallets.find((w) => w.chain === "SOL");
+  const connection = new Connection("https://api.devnet.solana.com");
+
+  const handleSend = async () => {
+    if (!solanaWallet) return;
+
+    const transaction = new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: new PublicKey(solanaWallet.address),
+        toPubkey: new PublicKey("recipient address"),
+        lamports: 0.1 * LAMPORTS_PER_SOL,
+      })
+    );
+
+    // Get recent blockhash
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = new PublicKey(solanaWallet.address);
+
+    // Sign the transaction
+    const signedTx = await solanaWallet.connector.signTransaction(
+      transaction
+    );
+
+    // Send the transaction
+    const signature = await connection.sendRawTransaction(
+      signedTx.serialize()
+    );
+    
+    await connection.confirmTransaction(signature, "confirmed");
+    console.log("Transaction signature:", signature);
+  };
+
+  return <button onClick={handleSend}>Send 0.1 SOL</button>;
+};
+```
+
+### Access User Information
+
+Get details about the authenticated user:
+
+```tsx
+import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
+
+const UserProfile = () => {
+  const { user, primaryWallet } = useDynamicContext();
+
+  if (!user) {
+    return <div>Not authenticated</div>;
+  }
+
+  return (
+    <div>
+      <h2>User Profile</h2>
+      <p>User ID: {user.userId}</p>
+      {user.email && <p>Email: {user.email}</p>}
+      {user.username && <p>Username: {user.username}</p>}
+      <p>Verified: {user.verifiedCredentials?.length || 0}</p>
+      <p>Primary Wallet: {primaryWallet?.address}</p>
+    </div>
+  );
+};
+```
+
+## Customization
+
+### Configure Wallet Options
+
+Customize which wallets are available:
+
+```tsx
+import {
+  DynamicContextProvider,
+  DynamicWidget,
+} from "@dynamic-labs/sdk-react-core";
+import { SolanaWalletConnectors } from "@dynamic-labs/solana";
+
+<DynamicContextProvider
+  settings={{
+    environmentId,
+    walletConnectors: [SolanaWalletConnectors],
+    initialAuthenticationMode: "connect-only", // or "connect-and-sign"
+  }}
+>
+  {children}
+</DynamicContextProvider>
+```
+
+### Theme Customization
+
+Customize the appearance:
+
+```tsx
+<DynamicContextProvider
+  settings={{
+    environmentId,
+    walletConnectors: [SolanaWalletConnectors],
+    appName: "Your dApp Name",
+    appLogoUrl: "https://your-app.com/logo.png",
+    cssOverrides: `
+      .dynamic-widget-button {
+        background: linear-gradient(to right, #6366f1, #8b5cf6);
+        border-radius: 8px;
+      }
+    `,
+  }}
+>
+```
+
+### Enable Embedded Wallets
+
+Configure in the Dynamic Dashboard:
+
+1. Go to **Configurations** → **Embedded Wallets**
+2. Enable "Create embedded wallet on signup"
+3. Choose security options (MPC, custodial, etc.)
+4. Set up recovery methods
+
+### Enable Fiat Onramp
+
+Configure in the Dynamic Dashboard:
+
+1. Go to **Configurations** → **Funding**
+2. Enable fiat onramp providers
+3. Configure supported cryptocurrencies (SOL)
+4. Set default amounts and currencies
+
+### Multi-Chain Configuration
+
+Support both Solana and EVM chains:
+
+```tsx
+import { SolanaWalletConnectors } from "@dynamic-labs/solana";
+import { EthereumWalletConnectors } from "@dynamic-labs/ethereum";
+
+<DynamicContextProvider
+  settings={{
+    environmentId,
+    walletConnectors: [
+      SolanaWalletConnectors,
+      EthereumWalletConnectors,
+    ],
+  }}
+>
+```
+
+### Custom Connect Button
+
+Build your own UI instead of using DynamicWidget:
+
+```tsx
+import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
+
+const CustomConnectButton = () => {
+  const { setShowAuthFlow, primaryWallet, handleLogOut } = useDynamicContext();
+
+  if (primaryWallet) {
+    return (
+      <button onClick={handleLogOut}>
+        {primaryWallet.address.slice(0, 6)}...
+      </button>
+    );
+  }
+
+  return (
+    <button onClick={() => setShowAuthFlow(true)}>
+      Connect Wallet
+    </button>
+  );
+};
+```
+
+## API Reference
+
+### Official Documentation
+
+- [Dynamic Docs](https://docs.dynamic.xyz/)
+- [Solana Integration](https://docs.dynamic.xyz/chains/solana)
+- [React SDK Reference](https://docs.dynamic.xyz/react-sdk/components)
+- [Dashboard](https://app.dynamic.xyz/)
+
+### Key Hooks
+
+- `useDynamicContext()` - Main context with auth state and methods
+- `useUserWallets()` - Access all connected wallets
+- `useIsLoggedIn()` - Check authentication status
+- `useSwitchWallet()` - Switch between multiple wallets
+- `useEmbeddedWallet()` - Access embedded wallet features
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Environment ID not found">
+    **Issue**: "Missing NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID" warning.
+
+    **Solutions**:
+    - Create `.env.local` in your project root
+    - Add `NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID=your_id`
+    - Get ID from [Dynamic Dashboard](https://app.dynamic.xyz/)
+    - Restart dev server after adding the variable
+  </Accordion>
+
+  <Accordion title="Solana wallets not appearing">
+    **Issue**: Only EVM wallets show in the connection modal.
+
+    **Solutions**:
+    - Verify `SolanaWalletConnectors` is imported and added:
+    ```tsx
+    import { SolanaWalletConnectors } from "@dynamic-labs/solana";
+    
+    walletConnectors: [SolanaWalletConnectors]
+    ```
+    - Check Solana is enabled in Dynamic Dashboard settings
+    - Clear browser cache and try again
+  </Accordion>
+
+  <Accordion title="No Solana wallet found after connect">
+    **Issue**: `userWallets.find(w => w.chain === 'SOL')` returns undefined.
+
+    **Solutions**:
+    - User may have connected an EVM wallet, not Solana
+    - Check all wallets: `console.log(userWallets)`
+    - Filter properly: `w.chain === "SOL"` (uppercase)
+    - User may need to add a Solana wallet in the widget
+  </Accordion>
+
+  <Accordion title="Transaction signing fails">
+    **Issue**: `signTransaction` throws an error.
+
+    **Solutions**:
+    - Ensure wallet connector exists:
+    ```tsx
+    if (!solanaWallet?.connector) {
+      throw new Error("No Solana wallet connected");
+    }
+    ```
+    - Set transaction fields before signing:
+    ```tsx
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = new PublicKey(wallet.address);
+    ```
+    - Check wallet has sufficient SOL for fees
+  </Accordion>
+
+  <Accordion title="Embedded wallet not created">
+    **Issue**: User logs in but doesn't get an embedded wallet.
+
+    **Solutions**:
+    - Enable in Dashboard: Configurations → Embedded Wallets
+    - Set "Create on signup" to true
+    - Configure for Solana specifically
+    - User may need to sign out and sign in again
+    - Check that user signed up after enabling the feature
+  </Accordion>
+
+  <Accordion title="Fiat onramp not showing">
+    **Issue**: Onramp option doesn't appear in the widget.
+
+    **Solutions**:
+    - Enable in Dashboard: Configurations → Funding
+    - Add SOL to supported cryptocurrencies
+    - Ensure onramp provider is configured
+    - Check geographical restrictions (some regions unsupported)
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Handle Multiple Wallets" icon="wallet">
+    Users can connect multiple wallets. Handle this properly:
+    ```tsx
+    const { primaryWallet } = useDynamicContext();
+    const userWallets = useUserWallets();
+    
+    // Use primary wallet for transactions
+    const activeSolanaWallet = 
+      primaryWallet?.chain === "SOL" 
+        ? primaryWallet 
+        : userWallets.find(w => w.chain === "SOL");
+    ```
+  </Card>
+
+  <Card title="Network Switching" icon="network-wired">
+    Handle network changes gracefully:
+    ```tsx
+    useEffect(() => {
+      if (solanaWallet?.network !== "devnet") {
+        // Prompt user to switch network
+      }
+    }, [solanaWallet?.network]);
+    ```
+  </Card>
+
+  <Card title="Loading States" icon="spinner">
+    Check if Dynamic is ready before rendering:
+    ```tsx
+    const { isAuthenticated, isLoading } = useDynamicContext();
+    
+    if (isLoading) {
+      return <Spinner />;
+    }
+    ```
+  </Card>
+
+  <Card title="Error Handling" icon="triangle-exclamation">
+    Wrap wallet operations in try-catch:
+    ```tsx
+    try {
+      const signed = await wallet.connector.signTransaction(tx);
+    } catch (error) {
+      if (error.code === 4001) {
+        // User rejected
+      }
+    }
+    ```
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Webhooks" icon="webhook" href="https://docs.dynamic.xyz/webhooks">
+    Listen to user events on your backend
+  </Card>
+
+  <Card title="Analytics" icon="chart-line" href="https://app.dynamic.xyz">
+    Track user metrics in the Dashboard
+  </Card>
+
+  <Card title="NFT Gating" icon="lock" href="https://docs.dynamic.xyz/features/nft-gating">
+    Add token-based access control
+  </Card>
+
+  <Card title="Multi-Chain" icon="link" href="https://docs.dynamic.xyz/chains">
+    Support Solana and EVM in one app
+  </Card>
+</CardGroup>

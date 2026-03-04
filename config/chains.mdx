@@ -1,0 +1,286 @@
+---
+title: Blockchain Chains
+description: Supported blockchain chains and how to configure them in your dApp
+---
+
+# Blockchain Chains
+
+The CLI supports two blockchain ecosystems: **EVM-compatible chains** and **Solana**. Each chain type has its own dependencies, wallet providers, and configuration.
+
+## Supported Chains
+
+<CardGroup cols={2}>
+  <Card title="EVM (Ethereum)" icon="ethereum">
+    Ethereum, Polygon, Base, Arbitrum, Optimism, and all EVM-compatible chains
+  </Card>
+  <Card title="Solana" icon="link">
+    Solana blockchain with devnet and mainnet support
+  </Card>
+</CardGroup>
+
+## Chain Selection
+
+When you run the CLI, you'll be prompted to select a blockchain:
+
+```bash
+npx create-nextjs-dapp my-dapp
+# Select blockchain: EVM or Solana
+```
+
+Or specify it directly with the `--chain` flag:
+
+```bash
+# EVM chains
+npx create-nextjs-dapp my-dapp --chain evm
+
+# Solana
+npx create-nextjs-dapp my-dapp --chain solana
+```
+
+<Note>
+  **Default Chain**: If no chain is specified and you use the `--yes` flag, the CLI defaults to **EVM**.
+</Note>
+
+## EVM (Ethereum Virtual Machine)
+
+### Overview
+
+EVM is the default chain option and supports all Ethereum-compatible blockchains including:
+
+- **Ethereum** (Mainnet, Sepolia, Holesky)
+- **Polygon** (Mainnet, Mumbai, Amoy)
+- **Base** (Mainnet, Sepolia)
+- **Arbitrum** (One, Nova, Sepolia)
+- **Optimism** (Mainnet, Sepolia)
+- **Avalanche C-Chain**
+- **BNB Smart Chain**
+- And any other EVM-compatible chain
+
+### Base Dependencies
+
+EVM projects include these core libraries:
+
+| Package | Version | Purpose |
+|---------|---------|----------|
+| `wagmi` | ^2.19.5 | React hooks for Ethereum |
+| `viem` | ^2.44.4 | TypeScript Ethereum library |
+| `@tanstack/react-query` | Latest | Data fetching and caching |
+
+### Default Configuration
+
+The generated project uses **Sepolia testnet** by default:
+
+```tsx
+import { sepolia } from "wagmi/chains";
+import { createConfig, http } from "wagmi";
+
+const config = createConfig({
+  chains: [sepolia],
+  transports: {
+    [sepolia.id]: http(),
+  },
+  ssr: true,
+});
+```
+
+### Adding Multiple Chains
+
+You can easily add support for multiple chains by importing them from `wagmi/chains`:
+
+```tsx
+import { mainnet, polygon, base, arbitrum, optimism } from "wagmi/chains";
+
+const config = createConfig({
+  chains: [mainnet, polygon, base, arbitrum, optimism],
+  transports: {
+    [mainnet.id]: http(),
+    [polygon.id]: http(),
+    [base.id]: http(),
+    [arbitrum.id]: http(),
+    [optimism.id]: http(),
+  },
+  ssr: true,
+});
+```
+
+### Custom RPC Endpoints
+
+For production, use custom RPC providers for better performance:
+
+```tsx
+import { http } from "wagmi";
+import { mainnet, polygon } from "wagmi/chains";
+
+const config = createConfig({
+  chains: [mainnet, polygon],
+  transports: {
+    [mainnet.id]: http(`https://eth-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_KEY}`),
+    [polygon.id]: http(`https://polygon-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_KEY}`),
+  },
+});
+```
+
+### Chain-Specific Considerations
+
+<Note>
+  **WalletConnect Project ID**: Most EVM wallet providers require a WalletConnect Project ID. Get one free at [cloud.walletconnect.com](https://cloud.walletconnect.com/)
+</Note>
+
+#### Contract Deployment
+
+When deploying contracts to different chains, be aware of:
+
+- **Gas costs** vary significantly between chains (L2s are much cheaper)
+- **Block times** differ (Ethereum ~12s, Polygon ~2s, etc.)
+- **Contract addresses** will differ across chains even with the same deployment
+
+#### Wallet Support
+
+Not all wallets support all chains:
+- MetaMask supports most EVM chains
+- Some wallets require manual chain configuration
+- L2s may require bridging assets from L1
+
+## Solana
+
+### Overview
+
+Solana is a high-performance blockchain optimized for speed and low transaction costs.
+
+**Key Features**:
+- Sub-second block times
+- Extremely low transaction fees (~$0.00025)
+- Account-based model (different from EVM)
+- Programs instead of smart contracts
+
+### Base Dependencies
+
+Solana projects include these core libraries:
+
+| Package | Version | Purpose |
+|---------|---------|----------|
+| `@solana/web3.js` | ^1.98.0 | Solana JavaScript SDK |
+| `@solana/wallet-adapter-react` | ^0.15.35 | React wallet integration |
+| `@solana/wallet-adapter-react-ui` | ^0.9.35 | Pre-built wallet UI components |
+| `@solana/wallet-adapter-wallets` | ^0.19.32 | Wallet adapter implementations |
+
+### Default Configuration
+
+The generated project uses **devnet** by default:
+
+```tsx
+import { clusterApiUrl } from "@solana/web3.js";
+import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
+import { PhantomWalletAdapter, SolflareWalletAdapter } from "@solana/wallet-adapter-wallets";
+
+const network = "devnet"; // or "mainnet-beta"
+const endpoint = clusterApiUrl(network);
+
+const wallets = [
+  new PhantomWalletAdapter(),
+  new SolflareWalletAdapter(),
+];
+```
+
+### Switching to Mainnet
+
+To use Solana mainnet, update the network configuration:
+
+```tsx
+// Change from devnet to mainnet-beta
+const network = "mainnet-beta";
+const endpoint = clusterApiUrl(network);
+
+// Or use a custom RPC endpoint for better performance
+const endpoint = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+```
+
+### Custom RPC Endpoints
+
+For production, use dedicated RPC providers:
+
+```tsx
+const endpoint = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://your-rpc-provider.com";
+
+// Popular Solana RPC providers:
+// - Helius: https://helius.dev
+// - QuickNode: https://quicknode.com
+// - Alchemy: https://alchemy.com
+// - Triton: https://triton.one
+```
+
+### Available Networks
+
+- **`devnet`** - Development network for testing
+- **`testnet`** - Test network (not commonly used)
+- **`mainnet-beta`** - Production network
+
+### Chain-Specific Considerations
+
+<Note>
+  **Wallet Support**: Solana uses different wallets than EVM. Popular options include Phantom, Solflare, and Backpack.
+</Note>
+
+#### Account Model
+
+Solana uses an account-based model:
+- **Accounts** store data and SOL
+- **Programs** are Solana's version of smart contracts
+- **Rent** is required to keep accounts alive (can be exempt with minimum balance)
+
+#### Transaction Fees
+
+- Fixed fee of ~0.000005 SOL per signature
+- Additional fees for compute units
+- Priority fees can speed up transaction processing
+
+#### Program Deployment
+
+- Programs are deployed to specific addresses
+- Upgradeable vs non-upgradeable programs
+- Requires SOL for deployment and rent
+
+## Switching Chains
+
+To switch your dApp to a different chain after creation:
+
+<Steps>
+  <Step title="Update dependencies">
+    Remove the old chain dependencies and install new ones:
+    
+    ```bash
+    # Remove EVM dependencies
+    npm uninstall wagmi viem
+    
+    # Install Solana dependencies
+    npm install @solana/web3.js @solana/wallet-adapter-react @solana/wallet-adapter-react-ui @solana/wallet-adapter-wallets
+    ```
+  </Step>
+  
+  <Step title="Update provider configuration">
+    Replace the provider configuration in your `Providers.tsx` file with the appropriate setup for your new chain.
+  </Step>
+  
+  <Step title="Update wallet provider">
+    Ensure your wallet provider supports the new chain. See the [wallet providers compatibility matrix](/config/wallet-providers#compatibility-matrix).
+  </Step>
+  
+  <Step title="Update contract/program interactions">
+    Rewrite your hooks and components to use the correct SDK for your chain (wagmi for EVM, @solana/web3.js for Solana).
+  </Step>
+</Steps>
+
+<Note>
+  **Tip**: It's usually easier to create a new project with the correct chain than to switch chains in an existing project.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Wallet Providers" icon="wallet" href="/config/wallet-providers">
+    Learn about the 8 supported wallet providers and their chain compatibility
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get started with creating your first dApp
+  </Card>
+</CardGroup>

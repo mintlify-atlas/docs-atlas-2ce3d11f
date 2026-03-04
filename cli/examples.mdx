@@ -1,0 +1,433 @@
+---
+title: 'CLI Examples'
+description: 'Real-world usage examples and common patterns'
+---
+
+## Quick Start Examples
+
+### Interactive Mode
+
+The simplest way to get started - just run the command and follow the prompts:
+
+```bash
+npx create-nextjs-dapp
+```
+
+<Steps>
+  <Step title="Enter project name">
+    ```
+    What is your project named? my-dapp
+    ```
+  </Step>
+  
+  <Step title="Select blockchain">
+    ```
+    Which blockchain do you want to build on?
+    > Ethereum (EVM) - Ethereum, Polygon, Base, Arbitrum, etc.
+      Solana - Solana blockchain
+    ```
+  </Step>
+  
+  <Step title="Choose wallet provider">
+    ```
+    Which wallet provider do you want to use?
+    > RainbowKit - Best UX for connecting wallets (recommended)
+      ConnectKit - Beautiful, customizable wallet connection UI
+      Privy - Email, social, and wallet login with embedded wallets
+      ...
+    ```
+  </Step>
+</Steps>
+
+### With Project Name
+
+Skip the project name prompt by providing it as an argument:
+
+```bash
+npx create-nextjs-dapp my-awesome-dapp
+```
+
+You'll still be prompted for chain and wallet provider selection.
+
+## EVM Examples
+
+### EVM with RainbowKit (Recommended)
+
+```bash
+npx create-nextjs-dapp my-dapp --chain evm --wallet rainbowkit
+```
+
+<Accordion title="Generated Project Features">
+  - RainbowKit for wallet connections
+  - Wagmi hooks for contract interactions
+  - Viem for Ethereum interactions
+  - Pre-configured for Ethereum mainnet and testnets
+  - Example contract interaction hook
+  - TypeScript + Next.js 14 App Router
+</Accordion>
+
+### EVM with ConnectKit
+
+```bash
+npx create-nextjs-dapp evm-connectkit-app -c evm -w connectkit
+```
+
+### EVM with Privy (Embedded Wallets)
+
+```bash
+npx create-nextjs-dapp my-privy-app --chain evm --wallet privy
+```
+
+<Info>
+Privy enables email/social login with embedded wallets, perfect for onboarding Web2 users to Web3.
+</Info>
+
+### EVM with Dynamic
+
+```bash
+npx create-nextjs-dapp my-dynamic-app --chain evm --wallet dynamic
+```
+
+### EVM with Reown (Web3Modal)
+
+```bash
+npx create-nextjs-dapp my-reown-app --chain evm --wallet reown
+```
+
+### EVM with Thirdweb
+
+```bash
+npx create-nextjs-dapp my-thirdweb-app -c evm -w thirdweb
+```
+
+### EVM with GetPara (Capsule)
+
+```bash
+npx create-nextjs-dapp my-para-app --chain evm --wallet getpara
+```
+
+## Solana Examples
+
+### Solana with Wallet Adapter (Recommended)
+
+```bash
+npx create-nextjs-dapp my-solana-dapp --chain solana --wallet wallet-adapter
+```
+
+<Accordion title="Generated Project Features">
+  - Solana Wallet Adapter for wallet connections
+  - Support for Phantom, Solflare, and other Solana wallets
+  - @solana/web3.js for blockchain interactions
+  - Example program interaction hook
+  - TypeScript + Next.js 14 App Router
+</Accordion>
+
+### Solana with Privy
+
+```bash
+npx create-nextjs-dapp solana-privy-app -c solana -w privy
+```
+
+### Solana with Dynamic
+
+```bash
+npx create-nextjs-dapp solana-dynamic-app --chain solana --wallet dynamic
+```
+
+### Solana with Reown
+
+```bash
+npx create-nextjs-dapp solana-reown-app -c solana -w reown
+```
+
+### Solana with Thirdweb
+
+```bash
+npx create-nextjs-dapp solana-thirdweb-app --chain solana --wallet thirdweb
+```
+
+## Non-Interactive Mode
+
+### Full Automation with Defaults
+
+Use the `--yes` flag to skip all prompts and use defaults:
+
+```bash
+npx create-nextjs-dapp my-dapp --yes
+```
+
+This creates a project with:
+- Project name: `my-dapp` (or default `my-dapp` if not specified)
+- Chain: `evm`
+- Wallet: `rainbowkit` (first available EVM provider)
+
+### Complete Non-Interactive Setup
+
+Specify all options for fully automated project creation:
+
+```bash
+npx create-nextjs-dapp my-dapp \
+  --chain evm \
+  --wallet rainbowkit \
+  --git \
+  --install \
+  --yes
+```
+
+<Accordion title="What This Does">
+  1. Creates project directory `my-dapp`
+  2. Scaffolds EVM dApp with RainbowKit
+  3. Initializes git repository
+  4. Installs dependencies
+  5. No prompts or user interaction required
+</Accordion>
+
+<Warning>
+Non-interactive mode will fail if the directory exists and contains conflicting files. Ensure the target directory is empty or doesn't exist.
+</Warning>
+
+## Package Manager Examples
+
+### Using npm (Auto-detected)
+
+```bash
+npx create-nextjs-dapp my-dapp
+```
+
+### Using yarn
+
+```bash
+yarn create nextjs-dapp my-dapp
+```
+
+Or force yarn:
+
+```bash
+npx create-nextjs-dapp my-dapp --use-yarn
+```
+
+### Using pnpm
+
+```bash
+pnpm create nextjs-dapp my-dapp
+```
+
+Or force pnpm:
+
+```bash
+npx create-nextjs-dapp my-dapp --use-pnpm
+```
+
+### Using bun
+
+```bash
+bunx create-nextjs-dapp my-dapp
+```
+
+Or force bun:
+
+```bash
+npx create-nextjs-dapp my-dapp --use-bun
+```
+
+## Advanced Usage Patterns
+
+### Complete Setup with Git and Dependencies
+
+```bash
+npx create-nextjs-dapp my-dapp \
+  --chain evm \
+  --wallet rainbowkit \
+  --git \
+  --install
+```
+
+This creates a project that's immediately ready to run:
+
+```bash
+cd my-dapp
+npm run dev
+```
+
+### CI/CD Pipeline Example
+
+Perfect for automated project creation in CI/CD:
+
+```bash
+npx create-nextjs-dapp project-$BUILD_NUMBER \
+  --chain solana \
+  --wallet wallet-adapter \
+  --yes \
+  --git \
+  --install \
+  --use-pnpm
+```
+
+### Quick Prototyping
+
+Rapidly create multiple test projects:
+
+```bash
+# Test RainbowKit
+npx create-nextjs-dapp test-rainbowkit -c evm -w rainbowkit -y
+
+# Test Privy
+npx create-nextjs-dapp test-privy -c evm -w privy -y
+
+# Test Wallet Adapter
+npx create-nextjs-dapp test-solana -c solana -w wallet-adapter -y
+```
+
+### Monorepo Project Creation
+
+Create projects in a monorepo structure:
+
+```bash
+# From monorepo root
+cd apps
+npx create-nextjs-dapp web-app --chain evm --wallet rainbowkit --use-pnpm
+cd ..
+
+cd packages
+npx create-nextjs-dapp mobile-app --chain solana --wallet privy --use-pnpm
+```
+
+## Real-World Scenarios
+
+### NFT Marketplace
+
+```bash
+npx create-nextjs-dapp nft-marketplace \
+  --chain evm \
+  --wallet rainbowkit \
+  --git \
+  --install
+```
+
+### DeFi Dashboard
+
+```bash
+npx create-nextjs-dapp defi-dashboard \
+  --chain evm \
+  --wallet dynamic \
+  --git \
+  --install \
+  --use-pnpm
+```
+
+### Solana NFT Minting
+
+```bash
+npx create-nextjs-dapp solana-nft-mint \
+  --chain solana \
+  --wallet wallet-adapter \
+  --git \
+  --install
+```
+
+### Multi-Chain dApp with Embedded Wallets
+
+```bash
+# For projects that need to support both EVM and Solana,
+# use providers that support both chains
+
+npx create-nextjs-dapp multichain-dapp \
+  --chain evm \
+  --wallet privy \
+  --git \
+  --install
+```
+
+<Info>
+Providers like Privy, Dynamic, Reown, and Thirdweb support both EVM and Solana, making them ideal for multi-chain applications.
+</Info>
+
+### Social dApp with Web2 Onboarding
+
+```bash
+npx create-nextjs-dapp social-dapp \
+  --chain evm \
+  --wallet privy \
+  --git \
+  --install
+```
+
+<Accordion title="Why Privy for Social dApps?">
+  Privy enables:
+  - Email/password authentication
+  - Social logins (Google, Twitter, Discord, etc.)
+  - Embedded wallets (no browser extension required)
+  - Seamless Web2 to Web3 onboarding
+</Accordion>
+
+## Troubleshooting Common Issues
+
+### Directory Already Exists
+
+If the directory exists and contains files:
+
+**Interactive mode** - You'll be prompted to overwrite
+
+**Non-interactive mode** - The command will fail. Remove the directory first:
+
+```bash
+rm -rf my-dapp
+npx create-nextjs-dapp my-dapp --yes
+```
+
+### Invalid Chain/Wallet Combination
+
+If you specify an incompatible combination:
+
+```bash
+npx create-nextjs-dapp my-dapp --chain solana --wallet rainbowkit
+# Error: Invalid wallet provider "rainbowkit".
+#   Valid options: wallet-adapter, privy, dynamic, reown, thirdweb
+```
+
+Use a compatible provider for your chosen chain.
+
+### Permission Denied
+
+If you get permission errors:
+
+```bash
+sudo npx create-nextjs-dapp my-dapp
+```
+
+Or change to a directory where you have write permissions.
+
+## Next Steps After Creation
+
+After creating your project, follow these steps:
+
+<Steps>
+  <Step title="Navigate to project">
+    ```bash
+    cd my-dapp
+    ```
+  </Step>
+  
+  <Step title="Install dependencies (if not already installed)">
+    ```bash
+    npm install  # or yarn, pnpm, bun
+    ```
+  </Step>
+  
+  <Step title="Configure environment variables">
+    ```bash
+    cp .env.example .env.local
+    # Edit .env.local with your API keys
+    ```
+  </Step>
+  
+  <Step title="Start development server">
+    ```bash
+    npm run dev
+    ```
+  </Step>
+  
+  <Step title="Open in browser">
+    Visit [http://localhost:3000](http://localhost:3000)
+  </Step>
+</Steps>

@@ -1,0 +1,563 @@
+---
+title: GetPara (Capsule)
+description: Embedded wallets with MPC key management for seamless user onboarding
+---
+
+# GetPara (Capsule)
+
+<Card title="Official Documentation" icon="book" href="https://docs.getpara.com">
+  Visit the official GetPara documentation
+</Card>
+
+## Overview
+
+GetPara (powered by Capsule) provides **embedded wallets with MPC (Multi-Party Computation) key management**. It's designed to completely abstract wallet complexity from users while maintaining non-custodial security through advanced cryptography.
+
+**Best for**: Consumer-facing EVM applications that need embedded wallets with enterprise-grade security and seamless user experience.
+
+<Note>
+  GetPara is built on Capsule's MPC infrastructure, providing institutional-grade key management for consumer applications.
+</Note>
+
+## Key Features
+
+- **MPC Key Management** - Advanced cryptographic security without seed phrases
+- **Embedded Wallets** - Auto-created wallets for seamless onboarding
+- **Email Authentication** - Passwordless login via email
+- **Non-Custodial** - Users maintain control through distributed key shares
+- **Programmable Wallets** - Customize wallet behavior and policies
+- **wagmi Integration** - Full compatibility with wagmi hooks
+- **Recovery System** - Secure account recovery without seed phrases
+- **EVM Only** - Optimized specifically for Ethereum and EVM chains
+
+## Installation
+
+Scaffold a new project with GetPara:
+
+<CodeGroup>
+```bash npm
+npx create-nextjs-dapp my-dapp --chain evm --wallet getpara
+```
+
+```bash yarn
+yarn create nextjs-dapp my-dapp --chain evm --wallet getpara
+```
+
+```bash pnpm
+pnpm create nextjs-dapp my-dapp --chain evm --wallet getpara
+```
+
+```bash bun
+bunx create-nextjs-dapp my-dapp --chain evm --wallet getpara
+```
+</CodeGroup>
+
+### Dependencies
+
+The CLI installs these packages:
+
+```json package.json
+{
+  "dependencies": {
+    "@getpara/react-sdk": "^2.0.0",
+    "wagmi": "^2.19.5",
+    "viem": "^2.44.4",
+    "@tanstack/react-query": "^5.0.0"
+  }
+}
+```
+
+## Configuration
+
+### Environment Variables
+
+Create a `.env.local` file:
+
+```bash .env.local
+NEXT_PUBLIC_PARA_API_KEY=your_api_key_here
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
+```
+
+<Steps>
+  <Step title="Get a Para API Key">
+    1. Visit [GetPara Developer Portal](https://developer.getpara.com)
+    2. Sign up or log in
+    3. Create a new project
+    4. Copy the API Key from your project settings
+  </Step>
+  
+  <Step title="Configure Project">
+    In the GetPara dashboard:
+    - Add your domain to allowed origins
+    - Configure authentication settings
+    - Set up wallet policies (optional)
+  </Step>
+  
+  <Step title="Add to your .env.local">
+    ```bash
+    NEXT_PUBLIC_PARA_API_KEY=para_live_abc123...
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  The Para API Key is **required** - the app will not function without it.
+</Warning>
+
+### Provider Setup
+
+The CLI generates a `Providers.tsx` component:
+
+```tsx components/Providers.tsx
+"use client";
+
+import { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { WagmiProvider, createConfig, http } from "wagmi";
+import { ParaProvider, Environment } from "@getpara/react-sdk";
+import { ThemeProvider } from "next-themes";
+import { sepolia } from "wagmi/chains";
+import "@getpara/react-sdk/styles.css";
+
+const queryClient = new QueryClient();
+
+const apiKey = process.env.NEXT_PUBLIC_PARA_API_KEY || "";
+
+const config = createConfig({
+  chains: [sepolia],
+  transports: {
+    [sepolia.id]: http(),
+  },
+  ssr: true,
+});
+
+const Providers = ({ children }: { children: ReactNode }) => {
+  if (!apiKey) {
+    console.warn(
+      "Missing NEXT_PUBLIC_PARA_API_KEY. Get one at https://developer.getpara.com/"
+    );
+  }
+
+  return (
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <ParaProvider
+        paraClientConfig={{
+          apiKey,
+          environment: Environment.BETA,
+        }}
+      >
+        <WagmiProvider config={config}>
+          <QueryClientProvider client={queryClient}>
+            {children}
+          </QueryClientProvider>
+        </WagmiProvider>
+      </ParaProvider>
+    </ThemeProvider>
+  );
+};
+
+export { Providers };
+```
+
+### Styles Import
+
+GetPara requires importing its styles:
+
+```tsx components/Providers.tsx
+import "@getpara/react-sdk/styles.css";
+```
+
+## Usage
+
+### Authentication
+
+The CLI generates a Header component with Para authentication:
+
+```tsx components/Header.tsx
+"use client";
+
+import { ParaModal, useModal } from "@getpara/react-sdk";
+import { useAccount, useDisconnect } from "wagmi";
+import { ThemeToggle } from "./ThemeToggle";
+
+const Header = () => {
+  const { openModal } = useModal();
+  const { address, chain } = useAccount();
+  const { disconnect } = useDisconnect();
+
+  const formatAddress = (addr: string) => {
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
+
+  return (
+    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
+      <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">web3_starter</span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          {!address ? (
+            <button
+              onClick={openModal}
+              className="px-4 py-2 text-sm border border-primary"
+            >
+              connect wallet
+            </button>
+          ) : (
+            <div className="flex items-center gap-3 text-sm">
+              {chain && (
+                <span className="px-3 py-1.5 border border-border">
+                  {chain.name?.toLowerCase()}
+                </span>
+              )}
+              <button
+                onClick={() => disconnect()}
+                className="px-3 py-1.5 border border-primary"
+              >
+                {formatAddress(address)}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+      <ParaModal />
+    </header>
+  );
+};
+
+export { Header };
+```
+
+<Note>
+  The `<ParaModal />` component **must** be included in your component tree for authentication to work.
+</Note>
+
+### Para Hooks
+
+Use GetPara hooks to manage authentication:
+
+```tsx
+import { useModal, useCapsule } from "@getpara/react-sdk";
+
+const MyComponent = () => {
+  const { openModal, closeModal, isOpen } = useModal();
+  const { isLoggedIn, logout } = useCapsule();
+
+  return (
+    <div>
+      {isLoggedIn ? (
+        <button onClick={logout}>Logout</button>
+      ) : (
+        <button onClick={openModal}>Login</button>
+      )}
+    </div>
+  );
+};
+```
+
+### Wagmi Integration
+
+Use wagmi hooks with Para's embedded wallets:
+
+```tsx
+import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import { useCapsule } from "@getpara/react-sdk";
+
+const ContractInteraction = () => {
+  const { isLoggedIn } = useCapsule();
+  const { address } = useAccount();
+  
+  const { data: greeting } = useReadContract({
+    address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`,
+    abi,
+    functionName: "greeting",
+  });
+
+  const { writeContract, isPending } = useWriteContract();
+
+  const handleUpdate = () => {
+    writeContract({
+      address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`,
+      abi,
+      functionName: "setGreeting",
+      args: ["Hello from Para!"],
+    });
+  };
+
+  if (!isLoggedIn) {
+    return <p>Please connect your wallet</p>;
+  }
+
+  return (
+    <div>
+      <p>Address: {address}</p>
+      <p>Greeting: {greeting as string}</p>
+      <button onClick={handleUpdate} disabled={isPending}>
+        {isPending ? "Updating..." : "Update Greeting"}
+      </button>
+    </div>
+  );
+};
+```
+
+### Wallet Information
+
+Access wallet and user data:
+
+```tsx
+import { useCapsule } from "@getpara/react-sdk";
+import { useAccount } from "wagmi";
+
+const WalletInfo = () => {
+  const { isLoggedIn, logout } = useCapsule();
+  const { address, chain } = useAccount();
+
+  if (!isLoggedIn) return null;
+
+  return (
+    <div>
+      <p>Wallet Address: {address}</p>
+      <p>Chain: {chain?.name}</p>
+      <button onClick={logout}>Logout</button>
+    </div>
+  );
+};
+```
+
+## Customization
+
+### Environment Configuration
+
+Switch between beta and production:
+
+```tsx components/Providers.tsx
+import { Environment } from "@getpara/react-sdk";
+
+<ParaProvider
+  paraClientConfig={{
+    apiKey,
+    environment: Environment.PRODUCTION,  // or Environment.BETA
+  }}
+>
+  {children}
+</ParaProvider>
+```
+
+### Multi-Chain Support
+
+Support multiple EVM chains:
+
+```tsx
+import { mainnet, polygon, optimism, arbitrum, sepolia } from "wagmi/chains";
+
+const config = createConfig({
+  chains: [mainnet, polygon, optimism, arbitrum, sepolia],
+  transports: {
+    [mainnet.id]: http(),
+    [polygon.id]: http(),
+    [optimism.id]: http(),
+    [arbitrum.id]: http(),
+    [sepolia.id]: http(),
+  },
+  ssr: true,
+});
+```
+
+### Custom Modal Trigger
+
+Create custom authentication flows:
+
+```tsx
+import { useModal } from "@getpara/react-sdk";
+
+const CustomLogin = () => {
+  const { openModal } = useModal();
+
+  return (
+    <button
+      onClick={openModal}
+      className="custom-button"
+    >
+      Sign In with Email
+    </button>
+  );
+};
+```
+
+## API Reference
+
+### Official Documentation
+
+<CardGroup cols={2}>
+  <Card title="GetPara Docs" icon="book" href="https://docs.getpara.com">
+    Complete GetPara documentation
+  </Card>
+  <Card title="Developer Portal" icon="code" href="https://developer.getpara.com">
+    Get API keys and manage projects
+  </Card>
+  <Card title="Capsule Docs" icon="shield" href="https://docs.usecapsule.com">
+    Underlying MPC infrastructure docs
+  </Card>
+  <Card title="wagmi Docs" icon="plug" href="https://wagmi.sh">
+    Wagmi hooks and utilities
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### API Key Missing
+
+**Issue**: Console warning about missing API Key
+
+**Solution**:
+1. Visit [GetPara Developer Portal](https://developer.getpara.com)
+2. Create a project and get your API Key
+3. Add to `.env.local`:
+   ```bash
+   NEXT_PUBLIC_PARA_API_KEY=para_live_abc123...
+   ```
+4. Restart dev server
+
+### Modal Not Showing
+
+**Issue**: Modal doesn't appear when clicking connect
+
+**Solution**: Ensure `<ParaModal />` is included in your component tree:
+
+```tsx
+const Header = () => {
+  const { openModal } = useModal();
+  
+  return (
+    <div>
+      <button onClick={openModal}>Connect</button>
+      <ParaModal />  {/* Must be included! */}
+    </div>
+  );
+};
+```
+
+### Styles Not Loading
+
+**Issue**: Modal appears unstyled
+
+**Solution**: Import the Para styles:
+
+```tsx
+import "@getpara/react-sdk/styles.css";
+```
+
+### Authentication Fails
+
+**Issue**: Email authentication doesn't work
+
+**Solution**:
+1. Verify API Key is correct
+2. Check that your domain is whitelisted in the Para dashboard
+3. Ensure you're using the correct environment (BETA vs PRODUCTION)
+4. Check browser console for specific errors
+
+### Wagmi Hooks Not Working
+
+**Issue**: wagmi hooks return undefined
+
+**Solution**: Ensure proper provider nesting:
+
+```tsx
+<ParaProvider>
+  <WagmiProvider>
+    <QueryClientProvider>
+      {/* Your components */}
+    </QueryClientProvider>
+  </WagmiProvider>
+</ParaProvider>
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Email-First Approach">
+    GetPara is designed for email authentication. Guide users to this:
+    
+    ```tsx
+    <button onClick={openModal}>
+      Sign in with Email
+    </button>
+    ```
+  </Accordion>
+  
+  <Accordion title="Handle Both States">
+    Check both Para auth and wagmi connection:
+    
+    ```tsx
+    const { isLoggedIn } = useCapsule();
+    const { address, isConnected } = useAccount();
+    
+    if (!isLoggedIn) return <button>Login</button>;
+    if (!isConnected) return <div>Connecting...</div>;
+    ```
+  </Accordion>
+  
+  <Accordion title="Educate Users">
+    Most users won't understand MPC. Explain benefits simply:
+    - "No seed phrases to remember"
+    - "Recover with your email"
+    - "Bank-level security"
+  </Accordion>
+  
+  <Accordion title="Test Recovery">
+    Test the account recovery flow:
+    - Clear browser data
+    - Try to recover account
+    - Verify wallet access is restored
+  </Accordion>
+</AccordionGroup>
+
+## Why Choose GetPara?
+
+<CardGroup cols={2}>
+  <Card title="No Seed Phrases" icon="key">
+    Users never see or manage seed phrases - just email login
+  </Card>
+  <Card title="MPC Security" icon="shield-halved">
+    Enterprise-grade security through distributed key management
+  </Card>
+  <Card title="Easy Recovery" icon="life-ring">
+    Account recovery via email without compromising security
+  </Card>
+  <Card title="EVM Optimized" icon="ethereum">
+    Built specifically for Ethereum and EVM chains
+  </Card>
+</CardGroup>
+
+## Security Model
+
+GetPara uses **MPC (Multi-Party Computation)** for key management:
+
+1. **Key Splitting**: Private keys are split into multiple shares
+2. **Distributed Storage**: Shares are stored across multiple secure locations
+3. **Threshold Signatures**: Transactions require multiple shares to sign
+4. **No Single Point of Failure**: No entity has full access to the private key
+
+<Note>
+  While GetPara provides excellent UX, users should understand that embedded wallets are different from self-custody wallets like MetaMask.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Chain Configuration" icon="link" href="/config/chains">
+    Configure different blockchain networks
+  </Card>
+  <Card title="Project Structure" icon="folder" href="/guides/project-structure">
+    Understand the generated project structure
+  </Card>
+  <Card title="Environment Variables" icon="key" href="/guides/environment-variables">
+    Learn about environment configuration
+  </Card>
+  <Card title="Deployment" icon="rocket" href="/guides/deployment">
+    Deploy your dApp to production
+  </Card>
+</CardGroup>

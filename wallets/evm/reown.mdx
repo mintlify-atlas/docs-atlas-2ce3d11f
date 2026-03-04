@@ -1,0 +1,582 @@
+---
+title: Reown (AppKit)
+description: WalletConnect's official SDK with support for 300+ wallets across EVM and Solana
+---
+
+# Reown (AppKit)
+
+<Card title="Official Documentation" icon="book" href="https://docs.reown.com/appkit">
+  Visit the official Reown AppKit documentation
+</Card>
+
+## Overview
+
+Reown AppKit (formerly Web3Modal) is the **official SDK from WalletConnect** for connecting to 300+ crypto wallets. It provides a beautiful modal interface for wallet connections with extensive multi-chain support.
+
+**Best for**: Applications that need the official WalletConnect experience with maximum wallet compatibility and QR code mobile wallet support.
+
+<Note>
+  Reown was formerly known as **WalletConnect** and the SDK was called **Web3Modal**. The company rebranded to Reown in 2024.
+</Note>
+
+## Key Features
+
+- **300+ Wallet Support** - Largest wallet compatibility in the ecosystem
+- **Official WalletConnect SDK** - Built by the WalletConnect team
+- **QR Code Connections** - Seamless mobile wallet connections
+- **Multi-Chain Support** - EVM and Solana chains
+- **Mobile Deep Linking** - Direct wallet app opening on mobile
+- **Customizable Modal** - Extensive theming and branding options
+- **Network Switching** - Built-in chain switching UI
+- **wagmi Integration** - Full wagmi support for EVM chains
+
+## Installation
+
+Scaffold a new project with Reown:
+
+<CodeGroup>
+```bash npm
+npx create-nextjs-dapp my-dapp --chain evm --wallet reown
+```
+
+```bash yarn
+yarn create nextjs-dapp my-dapp --chain evm --wallet reown
+```
+
+```bash pnpm
+pnpm create nextjs-dapp my-dapp --chain evm --wallet reown
+```
+
+```bash bun
+bunx create-nextjs-dapp my-dapp --chain evm --wallet reown
+```
+</CodeGroup>
+
+### Dependencies
+
+The CLI installs these packages:
+
+```json package.json
+{
+  "dependencies": {
+    "@reown/appkit": "^1.6.1",
+    "@reown/appkit-adapter-wagmi": "^1.6.1",
+    "wagmi": "^2.19.5",
+    "viem": "^2.44.4",
+    "@tanstack/react-query": "^5.0.0"
+  }
+}
+```
+
+<Note>
+  For Solana support, use `@reown/appkit-adapter-solana` instead of the wagmi adapter.
+</Note>
+
+## Configuration
+
+### Environment Variables
+
+Create a `.env.local` file:
+
+```bash .env.local
+NEXT_PUBLIC_REOWN_PROJECT_ID=your_project_id_here
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
+```
+
+<Steps>
+  <Step title="Get a Reown Project ID">
+    1. Visit [Reown Cloud](https://cloud.reown.com)
+    2. Sign up or log in
+    3. Create a new project
+    4. Copy the Project ID
+  </Step>
+  
+  <Step title="Add to your .env.local">
+    ```bash
+    NEXT_PUBLIC_REOWN_PROJECT_ID=abc123...
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  The Reown Project ID is **required** - the app will not function without it.
+</Warning>
+
+### Provider Setup
+
+The CLI generates a `Providers.tsx` component:
+
+```tsx components/Providers.tsx
+"use client";
+
+import { ReactNode, useState, useEffect } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { WagmiProvider, type Config } from "wagmi";
+import { createAppKit } from "@reown/appkit/react";
+import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
+import { ThemeProvider } from "next-themes";
+import { sepolia } from "wagmi/chains";
+
+const queryClient = new QueryClient();
+
+const projectId = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID || "";
+
+let wagmiAdapter: WagmiAdapter | null = null;
+let isAppKitInitialized = false;
+
+function initializeAppKit() {
+  if (isAppKitInitialized || !projectId) return;
+
+  wagmiAdapter = new WagmiAdapter({
+    networks: [sepolia],
+    projectId,
+    ssr: true,
+  });
+
+  createAppKit({
+    adapters: [wagmiAdapter],
+    networks: [sepolia],
+    projectId,
+    features: {
+      analytics: true,
+    },
+    themeMode: "dark",
+  });
+
+  isAppKitInitialized = true;
+}
+
+const Providers = ({ children }: { children: ReactNode }) => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    if (!projectId) {
+      console.warn(
+        "Missing NEXT_PUBLIC_REOWN_PROJECT_ID. Get one at https://cloud.reown.com/"
+      );
+    } else {
+      initializeAppKit();
+    }
+    setMounted(true);
+  }, []);
+
+  if (!projectId) {
+    return (
+      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center p-6 border border-border">
+            <p className="text-muted-foreground mb-2">Missing configuration</p>
+            <p className="text-sm text-muted-foreground">
+              Add NEXT_PUBLIC_REOWN_PROJECT_ID to your .env file
+            </p>
+          </div>
+        </div>
+      </ThemeProvider>
+    );
+  }
+
+  if (!mounted || !wagmiAdapter) {
+    return (
+      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+        <div className="min-h-screen" />
+      </ThemeProvider>
+    );
+  }
+
+  return (
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <WagmiProvider config={wagmiAdapter.wagmiConfig as Config}>
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      </WagmiProvider>
+    </ThemeProvider>
+  );
+};
+
+export { Providers };
+```
+
+## Usage
+
+### Connect Button
+
+Reown provides a custom `<appkit-button>` web component:
+
+```tsx components/Header.tsx
+"use client";
+
+import { ThemeToggle } from "./ThemeToggle";
+
+const Header = () => {
+  return (
+    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
+      <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">web3_starter</span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <appkit-button />
+        </div>
+      </div>
+    </header>
+  );
+};
+
+export { Header };
+```
+
+### Open Modal Programmatically
+
+Use the Reown hooks to control the modal:
+
+```tsx
+import { useAppKit } from "@reown/appkit/react";
+
+const MyComponent = () => {
+  const { open } = useAppKit();
+
+  return (
+    <button onClick={() => open()}>
+      Connect Wallet
+    </button>
+  );
+};
+```
+
+### Wagmi Hooks
+
+Use wagmi hooks for blockchain interactions:
+
+```tsx
+import { useAccount, useReadContract, useWriteContract } from "wagmi";
+
+const ContractInteraction = () => {
+  const { address, isConnected, chain } = useAccount();
+  
+  const { data: greeting } = useReadContract({
+    address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`,
+    abi,
+    functionName: "greeting",
+  });
+
+  const { writeContract, isPending } = useWriteContract();
+
+  const handleUpdate = () => {
+    writeContract({
+      address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`,
+      abi,
+      functionName: "setGreeting",
+      args: ["Hello from Reown!"],
+    });
+  };
+
+  if (!isConnected) {
+    return <p>Please connect your wallet</p>;
+  }
+
+  return (
+    <div>
+      <p>Connected: {address}</p>
+      <p>Chain: {chain?.name}</p>
+      <p>Greeting: {greeting as string}</p>
+      <button onClick={handleUpdate} disabled={isPending}>
+        {isPending ? "Updating..." : "Update Greeting"}
+      </button>
+    </div>
+  );
+};
+```
+
+### Modal State
+
+Control and monitor modal state:
+
+```tsx
+import { useAppKit, useAppKitState } from "@reown/appkit/react";
+
+const MyComponent = () => {
+  const { open, close } = useAppKit();
+  const { open: isOpen, selectedNetworkId } = useAppKitState();
+
+  return (
+    <div>
+      <p>Modal is {isOpen ? "open" : "closed"}</p>
+      <p>Selected network: {selectedNetworkId}</p>
+      <button onClick={() => open()}>Open</button>
+      <button onClick={() => close()}>Close</button>
+    </div>
+  );
+};
+```
+
+## Customization
+
+### Theme Configuration
+
+Customize the modal theme:
+
+```tsx components/Providers.tsx
+createAppKit({
+  adapters: [wagmiAdapter],
+  networks: [sepolia],
+  projectId,
+  
+  // Theme settings
+  themeMode: "dark",        // "light" | "dark" | "auto"
+  themeVariables: {
+    "--w3m-accent": "#7b3fe4",
+    "--w3m-border-radius-master": "8px",
+  },
+});
+```
+
+### Multi-Chain Support
+
+Configure multiple networks:
+
+```tsx
+import { mainnet, polygon, optimism, arbitrum, sepolia } from "wagmi/chains";
+
+wagmiAdapter = new WagmiAdapter({
+  networks: [mainnet, polygon, optimism, arbitrum, sepolia],
+  projectId,
+  ssr: true,
+});
+
+createAppKit({
+  adapters: [wagmiAdapter],
+  networks: [mainnet, polygon, optimism, arbitrum, sepolia],
+  projectId,
+  defaultNetwork: mainnet,  // Set default network
+});
+```
+
+### Custom Wallets
+
+Highlight specific wallets:
+
+```tsx
+createAppKit({
+  adapters: [wagmiAdapter],
+  networks: [sepolia],
+  projectId,
+  
+  // Feature specific wallets
+  featuredWalletIds: [
+    "c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96", // MetaMask
+    "4622a2b2d6af1c9844944291e5e7351a6aa24cd7b23099efac1b2fd875da31a0", // Trust Wallet
+  ],
+});
+```
+
+### Disable Analytics
+
+Opt out of anonymous analytics:
+
+```tsx
+createAppKit({
+  adapters: [wagmiAdapter],
+  networks: [sepolia],
+  projectId,
+  features: {
+    analytics: false,  // Disable analytics
+  },
+});
+```
+
+### Custom Button Styles
+
+Style the connect button:
+
+```css globals.css
+appkit-button {
+  --w3m-accent: #7b3fe4;
+  --w3m-border-radius-master: 8px;
+  font-family: var(--font-mono);
+}
+```
+
+## API Reference
+
+### Official Documentation
+
+<CardGroup cols={2}>
+  <Card title="Reown AppKit Docs" icon="book" href="https://docs.reown.com/appkit">
+    Complete AppKit documentation
+  </Card>
+  <Card title="Reown Cloud" icon="cloud" href="https://cloud.reown.com">
+    Get your Project ID
+  </Card>
+  <Card title="wagmi Docs" icon="plug" href="https://wagmi.sh">
+    Wagmi hooks and utilities
+  </Card>
+  <Card title="WalletConnect Protocol" icon="link" href="https://docs.walletconnect.com">
+    WalletConnect protocol docs
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Project ID Missing
+
+**Issue**: Console warning or error about missing Project ID
+
+**Solution**:
+1. Get a Project ID from [Reown Cloud](https://cloud.reown.com)
+2. Add to `.env.local`:
+   ```bash
+   NEXT_PUBLIC_REOWN_PROJECT_ID=abc123...
+   ```
+3. Restart dev server
+
+### Modal Not Opening
+
+**Issue**: Button clicks don't open the modal
+
+**Solution**:
+1. Verify `createAppKit` is called before component renders
+2. Check Project ID is valid
+3. Ensure component is client-side (`"use client"`)
+4. Check browser console for errors
+
+### QR Code Not Working
+
+**Issue**: Mobile wallets can't scan QR code
+
+**Solution**:
+1. Verify Project ID is valid
+2. Ensure you're using HTTPS (required for WalletConnect)
+3. Test with different mobile wallets
+4. Check that wallet app is up to date
+
+### Chain Not Appearing
+
+**Issue**: Chain doesn't show in network selector
+
+**Solution**: Add the chain to both adapter and AppKit:
+
+```tsx
+wagmiAdapter = new WagmiAdapter({
+  networks: [sepolia],  // Add here
+  projectId,
+});
+
+createAppKit({
+  adapters: [wagmiAdapter],
+  networks: [sepolia],  // And here
+  projectId,
+});
+```
+
+### SSR Hydration Issues
+
+**Issue**: Hydration mismatch errors
+
+**Solution**: The generated template handles this by:
+1. Initializing AppKit in `useEffect`
+2. Using `mounted` state to prevent SSR rendering
+3. Returning loading state until client-side initialization
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Initialize Once">
+    AppKit should only be initialized once. The template uses a flag:
+    
+    ```tsx
+    let isAppKitInitialized = false;
+    
+    function initializeAppKit() {
+      if (isAppKitInitialized) return;
+      // Initialize...
+      isAppKitInitialized = true;
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Handle Missing Project ID">
+    Show a helpful error when Project ID is missing:
+    
+    ```tsx
+    if (!projectId) {
+      return (
+        <div>
+          Add NEXT_PUBLIC_REOWN_PROJECT_ID to your .env file
+        </div>
+      );
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Use Web Components">
+    The `<appkit-button>` web component works out of the box:
+    
+    ```tsx
+    <appkit-button />
+    <appkit-network-button />
+    ```
+    
+    TypeScript users may need to add type declarations.
+  </Accordion>
+  
+  <Accordion title="Test Mobile Connections">
+    Always test QR code scanning with real mobile wallets:
+    - MetaMask Mobile
+    - Trust Wallet
+    - Rainbow Wallet
+    - Coinbase Wallet
+  </Accordion>
+</AccordionGroup>
+
+## Migration from Web3Modal
+
+<Note>
+  If you're migrating from the old Web3Modal v2/v3, Reown AppKit is the successor. The API has changed significantly.
+</Note>
+
+### Key Changes
+
+- Package name: `@web3modal/*` → `@reown/appkit*`
+- Initialization: Now uses `createAppKit` function
+- Adapters: Separate adapters for wagmi, ethers, solana
+- Theme: New theme system with CSS variables
+
+### Migration Steps
+
+1. **Update dependencies**:
+   ```bash
+   npm uninstall @web3modal/wagmi
+   npm install @reown/appkit @reown/appkit-adapter-wagmi
+   ```
+
+2. **Update imports**:
+   ```tsx
+   // Old
+   import { createWeb3Modal } from "@web3modal/wagmi/react";
+   
+   // New
+   import { createAppKit } from "@reown/appkit/react";
+   import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
+   ```
+
+3. **Update initialization** - see Provider Setup above
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Chain Configuration" icon="link" href="/config/chains">
+    Configure different blockchain networks
+  </Card>
+  <Card title="Project Structure" icon="folder" href="/guides/project-structure">
+    Understand the generated project structure
+  </Card>
+  <Card title="Environment Variables" icon="key" href="/guides/environment-variables">
+    Learn about environment configuration
+  </Card>
+  <Card title="Deployment" icon="rocket" href="/guides/deployment">
+    Deploy your dApp to production
+  </Card>
+</CardGroup>

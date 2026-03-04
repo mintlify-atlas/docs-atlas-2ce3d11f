@@ -1,0 +1,611 @@
+---
+title: Dynamic
+description: Multi-chain authentication with embedded wallets, social login, and fiat on-ramps
+---
+
+# Dynamic
+
+<Card title="Official Documentation" icon="book" href="https://docs.dynamic.xyz">
+  Visit the official Dynamic documentation
+</Card>
+
+## Overview
+
+Dynamic is a comprehensive authentication and wallet platform that supports multi-chain (EVM + Solana), embedded wallets, social login, fiat on-ramps, and user analytics. It's designed for teams building **production-grade web3 applications** with advanced features.
+
+**Best for**: Multi-chain applications that need comprehensive auth features, analytics, and embedded wallets with on-ramp capabilities.
+
+## Key Features
+
+- **Multi-Chain Support** - EVM and Solana chains in one integration
+- **Embedded Wallets** - Auto-created wallets for new users
+- **Social Login** - Email, Google, Twitter, Discord, and more
+- **Fiat On-Ramps** - Built-in fiat-to-crypto conversion
+- **User Analytics** - Detailed insights and user management dashboard
+- **Account Abstraction** - Support for smart contract wallets
+- **Customizable UI** - Extensive theming and branding options
+- **wagmi Integration** - Full wagmi compatibility for EVM chains
+- **One Widget** - Single component handles all authentication
+
+## Installation
+
+Scaffold a new project with Dynamic:
+
+<CodeGroup>
+```bash npm
+npx create-nextjs-dapp my-dapp --chain evm --wallet dynamic
+```
+
+```bash yarn
+yarn create nextjs-dapp my-dapp --chain evm --wallet dynamic
+```
+
+```bash pnpm
+pnpm create nextjs-dapp my-dapp --chain evm --wallet dynamic
+```
+
+```bash bun
+bunx create-nextjs-dapp my-dapp --chain evm --wallet dynamic
+```
+</CodeGroup>
+
+### Dependencies
+
+The CLI installs these packages:
+
+```json package.json
+{
+  "dependencies": {
+    "@dynamic-labs/ethereum": "^4.0.0",
+    "@dynamic-labs/sdk-react-core": "^4.0.0",
+    "@dynamic-labs/wagmi-connector": "^4.0.0",
+    "wagmi": "^2.19.5",
+    "viem": "^2.44.4",
+    "@tanstack/react-query": "^5.0.0"
+  }
+}
+```
+
+<Note>
+  For Solana support, use `@dynamic-labs/solana` instead of `@dynamic-labs/ethereum`.
+</Note>
+
+## Configuration
+
+### Environment Variables
+
+Create a `.env.local` file:
+
+```bash .env.local
+NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID=your_environment_id_here
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
+```
+
+<Steps>
+  <Step title="Get a Dynamic Environment ID">
+    1. Visit [Dynamic Dashboard](https://app.dynamic.xyz)
+    2. Sign up or log in
+    3. Create a new project
+    4. Go to **Developer** > **SDK & API Keys**
+    5. Copy the Environment ID
+  </Step>
+  
+  <Step title="Configure Settings">
+    In the Dynamic Dashboard:
+    - Choose authentication methods (email, social, wallets)
+    - Configure chains and networks
+    - Set up branding and UI customization
+    - Enable optional features (on-ramps, analytics)
+  </Step>
+  
+  <Step title="Add to your .env.local">
+    ```bash
+    NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID=abc123...
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  The Dynamic Environment ID is **required** - the app will not function without it.
+</Warning>
+
+### Provider Setup
+
+The CLI generates a `Providers.tsx` component:
+
+```tsx components/Providers.tsx
+"use client";
+
+import { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { WagmiProvider, createConfig, http } from "wagmi";
+import {
+  DynamicContextProvider,
+  DynamicWidget,
+} from "@dynamic-labs/sdk-react-core";
+import { EthereumWalletConnectors } from "@dynamic-labs/ethereum";
+import { DynamicWagmiConnector } from "@dynamic-labs/wagmi-connector";
+import { ThemeProvider } from "next-themes";
+import { sepolia } from "wagmi/chains";
+
+const queryClient = new QueryClient();
+
+const environmentId = process.env.NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID || "";
+
+const config = createConfig({
+  chains: [sepolia],
+  transports: {
+    [sepolia.id]: http(),
+  },
+  ssr: true,
+});
+
+const Providers = ({ children }: { children: ReactNode }) => {
+  if (!environmentId) {
+    console.warn(
+      "Missing NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID. Get one at https://app.dynamic.xyz/"
+    );
+  }
+
+  return (
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <DynamicContextProvider
+        settings={{
+          environmentId,
+          walletConnectors: [EthereumWalletConnectors],
+        }}
+      >
+        <WagmiProvider config={config}>
+          <QueryClientProvider client={queryClient}>
+            <DynamicWagmiConnector>{children}</DynamicWagmiConnector>
+          </QueryClientProvider>
+        </WagmiProvider>
+      </DynamicContextProvider>
+    </ThemeProvider>
+  );
+};
+
+export { Providers };
+```
+
+## Usage
+
+### Dynamic Widget
+
+The `DynamicWidget` component handles all authentication:
+
+```tsx components/Header.tsx
+"use client";
+
+import { DynamicWidget } from "@dynamic-labs/sdk-react-core";
+import { ThemeToggle } from "./ThemeToggle";
+
+const Header = () => {
+  return (
+    <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-sm">
+      <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">web3_starter</span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <DynamicWidget />
+        </div>
+      </div>
+    </header>
+  );
+};
+
+export { Header };
+```
+
+### Dynamic Hooks
+
+Use Dynamic hooks to access user data and authentication state:
+
+```tsx
+import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
+
+const MyComponent = () => {
+  const {
+    user,                    // User data
+    primaryWallet,          // Primary wallet
+    wallets,                // All connected wallets
+    setShowAuthFlow,        // Open auth modal
+    handleLogOut,           // Log out user
+    isAuthenticated,        // Auth state
+    authToken,              // JWT token
+  } = useDynamicContext();
+
+  return (
+    <div>
+      {isAuthenticated ? (
+        <div>
+          <p>User ID: {user?.userId}</p>
+          <p>Email: {user?.email}</p>
+          <p>Wallet: {primaryWallet?.address}</p>
+          <button onClick={handleLogOut}>Logout</button>
+        </div>
+      ) : (
+        <button onClick={() => setShowAuthFlow(true)}>Login</button>
+      )}
+    </div>
+  );
+};
+```
+
+### Wagmi Integration
+
+Use wagmi hooks with Dynamic:
+
+```tsx
+import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
+
+const ContractInteraction = () => {
+  const { isAuthenticated } = useDynamicContext();
+  const { address } = useAccount();
+  
+  const { data: greeting } = useReadContract({
+    address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`,
+    abi,
+    functionName: "greeting",
+  });
+
+  const { writeContract, isPending } = useWriteContract();
+
+  const handleUpdate = () => {
+    writeContract({
+      address: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as `0x${string}`,
+      abi,
+      functionName: "setGreeting",
+      args: ["Hello from Dynamic!"],
+    });
+  };
+
+  if (!isAuthenticated) {
+    return <p>Please connect your wallet</p>;
+  }
+
+  return (
+    <div>
+      <p>Address: {address}</p>
+      <p>Greeting: {greeting as string}</p>
+      <button onClick={handleUpdate} disabled={isPending}>
+        {isPending ? "Updating..." : "Update Greeting"}
+      </button>
+    </div>
+  );
+};
+```
+
+### User Information
+
+Access comprehensive user data:
+
+```tsx
+import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
+
+const UserProfile = () => {
+  const { user, primaryWallet, wallets } = useDynamicContext();
+
+  return (
+    <div>
+      {/* User Info */}
+      <p>User ID: {user?.userId}</p>
+      <p>Email: {user?.email}</p>
+      <p>Created: {user?.createdAt}</p>
+      
+      {/* Primary Wallet */}
+      <p>Primary: {primaryWallet?.address}</p>
+      <p>Chain: {primaryWallet?.chain}</p>
+      
+      {/* All Wallets */}
+      {wallets.map(wallet => (
+        <div key={wallet.id}>
+          <p>{wallet.address} ({wallet.chain})</p>
+        </div>
+      ))}
+    </div>
+  );
+};
+```
+
+## Customization
+
+### Design and Branding
+
+Customize the widget appearance:
+
+```tsx components/Providers.tsx
+<DynamicContextProvider
+  settings={{
+    environmentId,
+    walletConnectors: [EthereumWalletConnectors],
+    
+    // Design customization
+    designTokens: {
+      colors: {
+        primary: "#7b3fe4",
+        background: "#000000",
+        text: "#ffffff",
+      },
+      borderRadius: "8px",
+      fontFamily: "'Inter', sans-serif",
+    },
+  }}
+>
+  {children}
+</DynamicContextProvider>
+```
+
+### Authentication Methods
+
+Configure which login methods to enable:
+
+```tsx
+<DynamicContextProvider
+  settings={{
+    environmentId,
+    walletConnectors: [EthereumWalletConnectors],
+    
+    // Enable specific providers
+    enabledProviders: [
+      "email",
+      "google",
+      "twitter",
+      "discord",
+      "metamask",
+      "coinbase",
+      "walletconnect",
+    ],
+  }}
+>
+  {children}
+</DynamicContextProvider>
+```
+
+### Multi-Chain Configuration
+
+Support multiple EVM chains:
+
+```tsx
+import { mainnet, polygon, optimism, arbitrum, sepolia } from "wagmi/chains";
+
+const config = createConfig({
+  chains: [mainnet, polygon, optimism, arbitrum, sepolia],
+  transports: {
+    [mainnet.id]: http(),
+    [polygon.id]: http(),
+    [optimism.id]: http(),
+    [arbitrum.id]: http(),
+    [sepolia.id]: http(),
+  },
+  ssr: true,
+});
+
+<DynamicContextProvider
+  settings={{
+    environmentId,
+    walletConnectors: [EthereumWalletConnectors],
+    overrides: {
+      evmNetworks: [
+        { chainId: mainnet.id },
+        { chainId: polygon.id },
+        { chainId: optimism.id },
+        { chainId: arbitrum.id },
+        { chainId: sepolia.id },
+      ],
+    },
+  }}
+>
+  {children}
+</DynamicContextProvider>
+```
+
+### Privacy and Legal
+
+Add privacy policy and terms:
+
+```tsx
+<DynamicContextProvider
+  settings={{
+    environmentId,
+    walletConnectors: [EthereumWalletConnectors],
+    privacyPolicyUrl: "https://your-domain.com/privacy",
+    termsOfServiceUrl: "https://your-domain.com/terms",
+  }}
+>
+  {children}
+</DynamicContextProvider>
+```
+
+### Embedded Wallets
+
+Configure embedded wallet creation:
+
+```tsx
+<DynamicContextProvider
+  settings={{
+    environmentId,
+    walletConnectors: [EthereumWalletConnectors],
+    
+    // Auto-create embedded wallets
+    embeddedWallets: {
+      createOnLogin: "users-without-wallets",
+    },
+  }}
+>
+  {children}
+</DynamicContextProvider>
+```
+
+### On-Ramps
+
+Enable fiat on-ramps:
+
+```tsx
+import { useEmbeddedWallet } from "@dynamic-labs/sdk-react-core";
+
+const BuyButton = () => {
+  const { openFunding } = useEmbeddedWallet();
+  
+  return (
+    <button onClick={() => openFunding()}>
+      Buy Crypto
+    </button>
+  );
+};
+```
+
+## API Reference
+
+### Official Documentation
+
+<CardGroup cols={2}>
+  <Card title="Dynamic Docs" icon="book" href="https://docs.dynamic.xyz">
+    Complete Dynamic documentation
+  </Card>
+  <Card title="Dynamic Dashboard" icon="gear" href="https://app.dynamic.xyz">
+    Manage your project settings
+  </Card>
+  <Card title="wagmi Docs" icon="plug" href="https://wagmi.sh">
+    Wagmi hooks and utilities
+  </Card>
+  <Card title="API Reference" icon="code" href="https://docs.dynamic.xyz/api-reference">
+    REST API documentation
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Environment ID Missing
+
+**Issue**: Console warning about missing Environment ID
+
+**Solution**:
+1. Visit [Dynamic Dashboard](https://app.dynamic.xyz)
+2. Create a project and get your Environment ID
+3. Add to `.env.local`:
+   ```bash
+   NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID=abc123...
+   ```
+4. Restart dev server
+
+### Widget Not Appearing
+
+**Issue**: `DynamicWidget` doesn't render
+
+**Solution**:
+1. Verify `DynamicContextProvider` wraps your app
+2. Check Environment ID is set
+3. Ensure component is client-side (`"use client"`)
+4. Check browser console for errors
+
+### Wallet Connection Fails
+
+**Issue**: Wallet connection doesn't work
+
+**Solution**:
+1. Verify the wallet connector is included:
+   ```tsx
+   walletConnectors: [EthereumWalletConnectors]
+   ```
+2. Check that the chain is supported in your Dynamic Dashboard
+3. Verify wallet extension is installed and unlocked
+
+### Wagmi Hooks Not Working
+
+**Issue**: wagmi hooks return undefined
+
+**Solution**: Ensure proper provider order:
+
+```tsx
+<DynamicContextProvider>
+  <WagmiProvider>
+    <QueryClientProvider>
+      <DynamicWagmiConnector>
+        {/* Components here */}
+      </DynamicWagmiConnector>
+    </QueryClientProvider>
+  </WagmiProvider>
+</DynamicContextProvider>
+```
+
+### Analytics Not Showing
+
+**Issue**: User analytics not appearing in dashboard
+
+**Solution**:
+1. Wait a few minutes for data to sync
+2. Verify Environment ID is correct
+3. Check that events are being fired
+4. Contact Dynamic support if issue persists
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use the Dashboard">
+    Configure most settings in the Dynamic Dashboard rather than in code:
+    - Authentication methods
+    - Branding and design
+    - Network settings
+    - Security policies
+  </Accordion>
+  
+  <Accordion title="Leverage Analytics">
+    Use Dynamic's built-in analytics to understand user behavior:
+    - Track wallet connections
+    - Monitor authentication methods
+    - Analyze user retention
+    - Identify drop-off points
+  </Accordion>
+  
+  <Accordion title="Multi-Chain Strategy">
+    Plan your multi-chain strategy early:
+    
+    ```tsx
+    // Support both EVM and Solana
+    import { EthereumWalletConnectors } from "@dynamic-labs/ethereum";
+    import { SolanaWalletConnectors } from "@dynamic-labs/solana";
+    
+    walletConnectors: [
+      EthereumWalletConnectors,
+      SolanaWalletConnectors,
+    ]
+    ```
+  </Accordion>
+  
+  <Accordion title="Handle Auth Token">
+    Use the JWT auth token for backend verification:
+    
+    ```tsx
+    const { authToken } = useDynamicContext();
+    
+    // Send with API requests
+    fetch("/api/protected", {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Chain Configuration" icon="link" href="/config/chains">
+    Configure different blockchain networks
+  </Card>
+  <Card title="Project Structure" icon="folder" href="/guides/project-structure">
+    Understand the generated project structure
+  </Card>
+  <Card title="Environment Variables" icon="key" href="/guides/environment-variables">
+    Learn about environment configuration
+  </Card>
+  <Card title="Deployment" icon="rocket" href="/guides/deployment">
+    Deploy your dApp to production
+  </Card>
+</CardGroup>

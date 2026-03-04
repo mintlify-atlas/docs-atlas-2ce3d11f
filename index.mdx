@@ -1,97 +1,246 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: create-nextjs-dapp
+description: Build Next.js dApps with your preferred wallet provider and blockchain
+mode: custom
 ---
 
-## Setting up
+<div className="relative bg-gradient-to-b from-[#020627] via-[#0a0e2e] to-[#0f1117] dark:from-[#020627] dark:via-[#0a0e2e] dark:to-[#0f1117] py-20 overflow-hidden">
+  <div className="max-w-6xl mx-auto px-6 relative z-10">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+      <div className="lg:col-span-7">
+        <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
+          Build Next.js dApps in seconds
+        </h1>
+        <p className="text-lg md:text-xl text-gray-300 dark:text-gray-300 mb-8 max-w-2xl">
+          Interactive CLI to scaffold production-ready Next.js dApps with your preferred wallet provider. Support for EVM and Solana blockchains out of the box.
+        </p>
+        <div className="flex flex-wrap gap-4">
+          <a
+            href="/quickstart"
+            className="inline-flex items-center px-6 py-3 bg-[#238636] hover:bg-[#2ea043] text-white font-semibold rounded-lg transition-colors no-underline"
+          >
+            Get Started
+          </a>
+          <a
+            href="/cli/commands"
+            className="inline-flex items-center px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/30 text-white font-semibold rounded-lg transition-colors no-underline"
+          >
+            CLI Reference
+          </a>
+        </div>
+      </div>
+      <div className="lg:col-span-5 hidden lg:block">
+        <div className="bg-[#1a1d27] dark:bg-[#1a1d27] border border-[#27272a] dark:border-[#27272a] rounded-2xl p-6 shadow-2xl">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+          </div>
+          <pre className="text-sm text-gray-300 dark:text-gray-300">
+            <code>{`$ npx create-nextjs-dapp my-dapp
 
-Get your documentation site up and running in minutes.
+✔ Select blockchain
+  ● EVM
+  ○ Solana
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+✔ Choose wallet provider
+  ● RainbowKit
+  ○ Privy
+  ○ Dynamic
 
-## Make it yours
+✨ Creating your dApp...`}</code>
+          </pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-Design a docs site that looks great and empowers your users.
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4 text-center">
+    Quick start
+  </h2>
+  <p className="text-lg text-gray-600 dark:text-gray-400 mb-12 text-center max-w-3xl mx-auto">
+    Get your dApp running in under a minute
+  </p>
 
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
-  </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
+  <Steps>
+    <Step title="Run the CLI">
+      Execute the create-nextjs-dapp command in your terminal:
+      
+      <CodeGroup>
+      ```bash npm
+      npx create-nextjs-dapp my-dapp
+      ```
+      ```bash yarn
+      yarn create nextjs-dapp my-dapp
+      ```
+      ```bash pnpm
+      pnpm create nextjs-dapp my-dapp
+      ```
+      ```bash bun
+      bunx create-nextjs-dapp my-dapp
+      ```
+      </CodeGroup>
 
-## Create beautiful pages
+      The CLI will interactively prompt you to select your blockchain and wallet provider.
+    </Step>
 
-Everything you need to create world-class documentation.
+    <Step title="Configure your environment">
+      Navigate to your project and set up environment variables:
+      
+      ```bash
+      cd my-dapp
+      cp .env.example .env.local
+      ```
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+      Add your API keys (RPC URLs, wallet provider keys, etc.) to `.env.local` based on your chosen provider.
+    </Step>
 
-## Need inspiration?
+    <Step title="Install and run">
+      Install dependencies and start the development server:
+      
+      ```bash
+      npm install
+      npm run dev
+      ```
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+      Your dApp will be running at `http://localhost:3000` with wallet connection already configured.
+    </Step>
+  </Steps>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+    Features
+  </h2>
+  <p className="text-lg text-gray-600 dark:text-gray-400 mb-12">
+    Everything you need to build modern web3 applications
+  </p>
+
+  <CardGroup cols={3}>
+    <Card title="Interactive CLI" icon="terminal" href="/cli/commands">
+      Beautiful command-line interface with prompts powered by Clack
+    </Card>
+    <Card title="Multi-chain support" icon="link" href="/config/chains">
+      Support for EVM (Ethereum, Polygon, Base) and Solana blockchains
+    </Card>
+    <Card title="8 wallet providers" icon="wallet" href="/config/wallet-providers">
+      Pre-configured integrations for RainbowKit, Privy, Dynamic, and more
+    </Card>
+    <Card title="TypeScript first" icon="code" href="/guides/project-structure">
+      Full TypeScript support with strict mode and type safety
+    </Card>
+    <Card title="Next.js 14+" icon="rocket" href="/quickstart">
+      Built on Next.js App Router with server components
+    </Card>
+    <Card title="Smart defaults" icon="wand-magic-sparkles" href="/guides/package-managers">
+      Automatic package manager detection and intelligent scaffolding
+    </Card>
+  </CardGroup>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+    Supported wallet providers
+  </h2>
+  <p className="text-lg text-gray-600 dark:text-gray-400 mb-12">
+    Choose from industry-leading wallet connection libraries
+  </p>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <a href="/wallets/evm/rainbowkit" className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#848c8e] dark:hover:border-[#848c8e] overflow-hidden transition-all no-underline bg-white dark:bg-[#1a1d27]">
+      <div className="p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          RainbowKit
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Best-in-class wallet connection UX for Ethereum. Recommended for EVM projects.
+        </p>
+        <div className="flex items-center text-sm text-[#848c8e] group-hover:text-[#848c8e] font-medium">
+          Learn more
+          <svg className="ml-1 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+
+    <a href="/wallets/solana/wallet-adapter" className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#848c8e] dark:hover:border-[#848c8e] overflow-hidden transition-all no-underline bg-white dark:bg-[#1a1d27]">
+      <div className="p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          Solana Wallet Adapter
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Official Solana wallet connection library. Supports all major Solana wallets.
+        </p>
+        <div className="flex items-center text-sm text-[#848c8e] group-hover:text-[#848c8e] font-medium">
+          Learn more
+          <svg className="ml-1 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+
+    <a href="/wallets/evm/privy" className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#848c8e] dark:hover:border-[#848c8e] overflow-hidden transition-all no-underline bg-white dark:bg-[#1a1d27]">
+      <div className="p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          Privy
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Email, social login, and embedded wallets. Great for onboarding non-crypto users.
+        </p>
+        <div className="flex items-center text-sm text-[#848c8e] group-hover:text-[#848c8e] font-medium">
+          Learn more
+          <svg className="ml-1 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+
+    <a href="/wallets/evm/dynamic" className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#848c8e] dark:hover:border-[#848c8e] overflow-hidden transition-all no-underline bg-white dark:bg-[#1a1d27]">
+      <div className="p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          Dynamic
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Multi-chain authentication with embedded wallets and fiat on-ramps built-in.
+        </p>
+        <div className="flex items-center text-sm text-[#848c8e] group-hover:text-[#848c8e] font-medium">
+          Learn more
+          <svg className="ml-1 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <div className="mt-8 text-center">
+    <a href="/config/wallet-providers" className="inline-flex items-center text-[#848c8e] hover:text-[#848c8e] font-medium no-underline">
+      View all 8 providers
+      <svg className="ml-1 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+      </svg>
+    </a>
+  </div>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="rounded-2xl border border-gray-200 dark:border-[#27272a] bg-gradient-to-br from-gray-50 to-white dark:from-[#1a1d27] dark:to-[#0f1117] p-12 text-center">
+    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+      Ready to build your dApp?
+    </h2>
+    <p className="text-lg text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
+      Get started in under a minute with our interactive CLI and start building production-ready web3 applications.
+    </p>
+    <a
+      href="/quickstart"
+      className="inline-flex items-center px-8 py-4 bg-[#238636] hover:bg-[#2ea043] text-white text-lg font-semibold rounded-lg transition-colors no-underline"
+    >
+      Get Started
+    </a>
+  </div>
+</div>

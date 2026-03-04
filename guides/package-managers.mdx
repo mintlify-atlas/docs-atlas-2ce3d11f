@@ -1,0 +1,203 @@
+---
+title: Package Managers
+description: Using npm, yarn, pnpm, and bun with create-nextjs-dapp
+---
+
+The CLI supports all major JavaScript package managers: npm, yarn, pnpm, and bun. It automatically detects which package manager you're using and adapts its behavior accordingly.
+
+## Automatic Detection
+
+The CLI automatically detects your package manager by checking the `npm_config_user_agent` environment variable, which is set by your package manager when running commands.
+
+```typescript
+export function getPkgManager(): PackageManager {
+  const userAgent = process.env.npm_config_user_agent || "";
+
+  if (userAgent.startsWith("yarn")) return "yarn";
+  if (userAgent.startsWith("pnpm")) return "pnpm";
+  if (userAgent.startsWith("bun")) return "bun";
+  
+  return "npm"; // default fallback
+}
+```
+
+This means:
+- Running `npm create nextjs-dapp` → uses npm
+- Running `yarn create nextjs-dapp` → uses yarn
+- Running `pnpm create nextjs-dapp` → uses pnpm
+- Running `bunx create-nextjs-dapp` → uses bun
+
+## Overriding Detection
+
+You can override the auto-detected package manager using CLI flags:
+
+<CodeGroup>
+
+```bash npm
+npx create-nextjs-dapp --use-npm
+```
+
+```bash yarn
+npx create-nextjs-dapp --use-yarn
+```
+
+```bash pnpm
+npx create-nextjs-dapp --use-pnpm
+```
+
+```bash bun
+npx create-nextjs-dapp --use-bun
+```
+
+</CodeGroup>
+
+<Info>
+The override flags are useful when you want to use a different package manager than the one you're running the CLI with.
+</Info>
+
+## Auto-Install Feature
+
+The `--install` flag automatically installs dependencies after project generation:
+
+<CodeGroup>
+
+```bash npm
+npx create-nextjs-dapp my-app --install
+# Runs: npm install
+```
+
+```bash yarn
+yarn create nextjs-dapp my-app --install
+# Runs: yarn
+```
+
+```bash pnpm
+pnpm create nextjs-dapp my-app --install
+# Runs: pnpm install
+```
+
+```bash bun
+bunx create-nextjs-dapp my-app --install
+# Runs: bun install
+```
+
+</CodeGroup>
+
+Without the `--install` flag, you'll need to manually install dependencies:
+
+```bash
+cd my-app
+npm install  # or yarn, pnpm install, bun install
+```
+
+## Package Manager Commands
+
+The CLI provides package-manager-specific commands in the project summary:
+
+### Install Commands
+
+| Package Manager | Install Command |
+|----------------|----------------|
+| npm | `npm install` |
+| yarn | `yarn` |
+| pnpm | `pnpm install` |
+| bun | `bun install` |
+
+### Run Commands
+
+| Package Manager | Dev Command |
+|----------------|-------------|
+| npm | `npm run dev` |
+| yarn | `yarn dev` |
+| pnpm | `pnpm dev` |
+| bun | `bun dev` |
+
+## Implementation Details
+
+The install process runs with `stdio: "pipe"` to suppress output and handle errors gracefully:
+
+```typescript
+export function install(
+  root: string,
+  packageManager: PackageManager
+): boolean {
+  const commands: Record<PackageManager, string> = {
+    npm: "npm install",
+    yarn: "yarn",
+    pnpm: "pnpm install",
+    bun: "bun install",
+  };
+
+  try {
+    execSync(commands[packageManager], {
+      cwd: root,
+      stdio: "pipe",
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+```
+
+<Note>
+If installation fails, the CLI shows a warning but doesn't exit. You can install dependencies manually after project creation.
+</Note>
+
+## Best Practices
+
+<AccordionGroup>
+
+<Accordion title="Use the same package manager consistently">
+Choose one package manager for your project and stick with it. Mixing package managers can lead to:
+- Multiple lock files (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `bun.lockb`)
+- Dependency resolution conflicts
+- Larger repository size
+</Accordion>
+
+<Accordion title="Commit your lock file">
+Always commit your package manager's lock file to ensure consistent dependency versions:
+- `package-lock.json` (npm)
+- `yarn.lock` (yarn)
+- `pnpm-lock.yaml` (pnpm)
+- `bun.lockb` (bun)
+</Accordion>
+
+<Accordion title="Consider performance">
+Package managers have different performance characteristics:
+- **bun**: Fastest installation and runtime
+- **pnpm**: Fast with efficient disk space usage (uses hard links)
+- **yarn**: Fast with good caching
+- **npm**: Most widely used, reliable
+</Accordion>
+
+</AccordionGroup>
+
+## Examples
+
+### Full automated setup
+
+```bash
+npx create-nextjs-dapp my-dapp \
+  --chain evm \
+  --wallet rainbowkit \
+  --install \
+  --git
+```
+
+### Override package manager
+
+```bash
+# Running with npm but want to use pnpm
+npx create-nextjs-dapp my-dapp --use-pnpm --install
+```
+
+### Non-interactive with specific package manager
+
+```bash
+pnpm create nextjs-dapp my-dapp \
+  --yes \
+  --chain solana \
+  --wallet wallet-adapter \
+  --install
+```

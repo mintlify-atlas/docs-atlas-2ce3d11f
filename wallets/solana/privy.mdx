@@ -1,0 +1,530 @@
+---
+title: Privy (Solana)
+description: Email, social, and wallet login with embedded wallets for Solana
+---
+
+## Overview
+
+[Privy](https://www.privy.io/) is a comprehensive authentication platform that brings traditional web2 login methods (email, social) to Solana dApps while also supporting standard wallet connections. It automatically creates embedded Solana wallets for users without existing wallets.
+
+**Best for**: Consumer-facing Solana applications that want to onboard users who don't have crypto wallets yet.
+
+## Key Features
+
+- **Multiple Login Methods**: Email, Google, Twitter, Discord, GitHub, Apple, and more
+- **Embedded Wallets**: Auto-creates Solana wallets for users without existing wallets
+- **Wallet Connections**: Also supports Phantom, Solflare, and other Solana wallets
+- **Cross-Chain**: Use the same account for both Solana and EVM chains
+- **MPC Security**: Embedded wallets use multi-party computation for key management
+- **Session Management**: Built-in user session handling
+- **Customizable UI**: Themed authentication modals
+
+## Installation
+
+Scaffold a new project with Privy:
+
+```bash
+npx create-nextjs-dapp@latest
+```
+
+When prompted:
+1. Choose **Solana** as your blockchain
+2. Select **Privy** as your wallet provider
+
+### Dependencies Installed
+
+The CLI automatically installs:
+
+```json
+{
+  "@solana/web3.js": "^1.98.0",
+  "@solana/wallet-adapter-react": "^0.15.35",
+  "@solana/wallet-adapter-react-ui": "^0.9.35",
+  "@solana/wallet-adapter-wallets": "^0.19.32",
+  "@privy-io/react-auth": "^2.4.1"
+}
+```
+
+## Configuration
+
+### Get Your Privy App ID
+
+1. Go to [https://dashboard.privy.io](https://dashboard.privy.io)
+2. Sign up or log in
+3. Create a new app
+4. Go to **Settings** and copy your App ID
+
+### Environment Variables
+
+Add to `.env.local`:
+
+```bash
+# Privy App ID (required)
+NEXT_PUBLIC_PRIVY_APP_ID=your_app_id_here
+
+# Program configuration (optional)
+NEXT_PUBLIC_PROGRAM_ID=YourProgramAddressHere
+```
+
+### Provider Setup
+
+The generated `components/Providers.tsx` configures Privy for Solana:
+
+```tsx
+"use client";
+
+import { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PrivyProvider } from "@privy-io/react-auth";
+import { ThemeProvider } from "next-themes";
+
+const queryClient = new QueryClient();
+
+const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "";
+
+const Providers = ({ children }: { children: ReactNode }) => {
+  if (!appId) {
+    console.warn(
+      "Missing NEXT_PUBLIC_PRIVY_APP_ID. Get one at https://dashboard.privy.io/"
+    );
+  }
+
+  return (
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <PrivyProvider
+        appId={appId}
+        config={{
+          appearance: {
+            theme: "dark",
+          },
+          embeddedWallets: {
+            createOnLogin: "users-without-wallets",
+          },
+          solanaClusters: [
+            {
+              name: "devnet",
+              rpcUrl: "https://api.devnet.solana.com",
+            },
+          ],
+        }}
+      >
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      </PrivyProvider>
+    </ThemeProvider>
+  );
+};
+
+export { Providers };
+```
+
+## Usage
+
+### Login and Logout
+
+Use the `usePrivy` hook for authentication:
+
+```tsx
+"use client";
+
+import { usePrivy } from "@privy-io/react-auth";
+
+const LoginButton = () => {
+  const { login, logout, authenticated, user } = usePrivy();
+
+  if (authenticated) {
+    return (
+      <div>
+        <p>Welcome, {user?.email?.address || "User"}!</p>
+        <button onClick={logout}>Logout</button>
+      </div>
+    );
+  }
+
+  return <button onClick={login}>Login</button>;
+};
+```
+
+### Access Solana Wallet
+
+Use `useSolanaWallets` to interact with the user's Solana wallet:
+
+```tsx
+"use client";
+
+import { usePrivy, useSolanaWallets } from "@privy-io/react-auth";
+import { Connection, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { useEffect, useState } from "react";
+
+const connection = new Connection("https://api.devnet.solana.com");
+
+const WalletStatus = () => {
+  const { authenticated } = usePrivy();
+  const { wallets } = useSolanaWallets();
+  const wallet = wallets[0];
+  const [balance, setBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (wallet?.address) {
+      const pubkey = new PublicKey(wallet.address);
+      connection
+        .getBalance(pubkey)
+        .then((bal) => setBalance(bal / LAMPORTS_PER_SOL))
+        .catch(console.error);
+    }
+  }, [wallet?.address]);
+
+  if (!authenticated || !wallet) {
+    return <div>Please login to view wallet</div>;
+  }
+
+  return (
+    <div>
+      <p>Address: {wallet.address}</p>
+      <p>Balance: {balance?.toFixed(4)} SOL</p>
+      <p>Type: {wallet.walletClientType}</p>
+    </div>
+  );
+};
+```
+
+### Sign Transactions
+
+Sign and send Solana transactions:
+
+```tsx
+import { useSolanaWallets } from "@privy-io/react-auth";
+import {
+  Connection,
+  Transaction,
+  SystemProgram,
+  PublicKey,
+  LAMPORTS_PER_SOL,
+} from "@solana/web3.js";
+
+const SendSol = () => {
+  const { wallets } = useSolanaWallets();
+  const wallet = wallets[0];
+  const connection = new Connection("https://api.devnet.solana.com");
+
+  const handleSend = async () => {
+    if (!wallet) return;
+
+    const transaction = new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: new PublicKey(wallet.address),
+        toPubkey: new PublicKey("recipient address"),
+        lamports: 0.1 * LAMPORTS_PER_SOL,
+      })
+    );
+
+    // Get recent blockhash
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = new PublicKey(wallet.address);
+
+    // Sign and send
+    const signature = await wallet.signAndSendTransaction(transaction);
+    await connection.confirmTransaction(signature, "confirmed");
+    
+    console.log("Transaction signature:", signature);
+  };
+
+  return <button onClick={handleSend}>Send 0.1 SOL</button>;
+};
+```
+
+### Check User Info
+
+Access detailed user information:
+
+```tsx
+import { usePrivy } from "@privy-io/react-auth";
+
+const UserProfile = () => {
+  const { user, authenticated } = usePrivy();
+
+  if (!authenticated || !user) {
+    return <div>Not authenticated</div>;
+  }
+
+  return (
+    <div>
+      <h2>User Profile</h2>
+      <p>User ID: {user.id}</p>
+      {user.email && <p>Email: {user.email.address}</p>}
+      {user.google && <p>Google: {user.google.email}</p>}
+      {user.twitter && <p>Twitter: @{user.twitter.username}</p>}
+      <p>Created: {new Date(user.createdAt).toLocaleDateString()}</p>
+    </div>
+  );
+};
+```
+
+## Customization
+
+### Configure Login Methods
+
+Choose which login methods to enable:
+
+```tsx
+<PrivyProvider
+  appId={appId}
+  config={{
+    loginMethods: ["email", "google", "twitter", "discord"],
+    appearance: {
+      theme: "dark",
+      accentColor: "#6366f1",
+      logo: "https://your-app.com/logo.png",
+    },
+    embeddedWallets: {
+      createOnLogin: "users-without-wallets",
+    },
+  }}
+>
+  {children}
+</PrivyProvider>
+```
+
+### Configure Solana Network
+
+Set up mainnet or custom RPC:
+
+```tsx
+config={{
+  solanaClusters: [
+    {
+      name: "mainnet-beta",
+      rpcUrl: "https://your-rpc-endpoint.com",
+    },
+    {
+      name: "devnet",
+      rpcUrl: "https://api.devnet.solana.com",
+    },
+  ],
+}}
+```
+
+### Custom Modal Text
+
+Customize the authentication modal:
+
+```tsx
+config={{
+  appearance: {
+    theme: "dark",
+    accentColor: "#6366f1",
+    logo: "https://your-app.com/logo.png",
+    landingHeader: "Welcome to Your dApp",
+    loginMessage: "Sign in to access your account",
+  },
+}}
+```
+
+### Handle Embedded Wallet Creation
+
+Control when embedded wallets are created:
+
+```tsx
+config={{
+  embeddedWallets: {
+    createOnLogin: "all-users", // Create for everyone
+    // or
+    createOnLogin: "users-without-wallets", // Only for users without wallets
+    // or
+    createOnLogin: "off", // Never auto-create
+  },
+}}
+```
+
+### Export Private Key
+
+Allow users to export their embedded wallet:
+
+```tsx
+import { useSolanaWallets } from "@privy-io/react-auth";
+
+const ExportWallet = () => {
+  const { wallets } = useSolanaWallets();
+  const embeddedWallet = wallets.find(
+    (w) => w.walletClientType === "privy"
+  );
+
+  const handleExport = async () => {
+    if (!embeddedWallet) return;
+    
+    // This will show Privy's export UI
+    await embeddedWallet.exportWallet();
+  };
+
+  if (!embeddedWallet) {
+    return null;
+  }
+
+  return <button onClick={handleExport}>Export Wallet</button>;
+};
+```
+
+## API Reference
+
+### Official Documentation
+
+- [Privy Docs](https://docs.privy.io/)
+- [Solana Integration Guide](https://docs.privy.io/guide/solana)
+- [React SDK Reference](https://docs.privy.io/reference/react-auth)
+- [Dashboard](https://dashboard.privy.io/)
+
+### Key Hooks
+
+- `usePrivy()` - Authentication state and methods
+- `useSolanaWallets()` - Access Solana wallets
+- `useLogin()` - Customize login flow
+- `useLogout()` - Customize logout flow
+- `useWallets()` - All connected wallets (cross-chain)
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Missing App ID error">
+    **Issue**: "Missing NEXT_PUBLIC_PRIVY_APP_ID" warning appears.
+
+    **Solutions**:
+    - Create a `.env.local` file in your project root
+    - Add `NEXT_PUBLIC_PRIVY_APP_ID=your_app_id`
+    - Get your App ID from [Privy Dashboard](https://dashboard.privy.io/)
+    - Restart your dev server after adding the variable
+  </Accordion>
+
+  <Accordion title="Login modal doesn't appear">
+    **Issue**: Clicking login button does nothing.
+
+    **Solutions**:
+    - Verify PrivyProvider wraps your app in `app/layout.tsx`
+    - Check browser console for errors
+    - Ensure you're calling `login()` from the `usePrivy()` hook
+    - Check that your App ID is valid in the Privy dashboard
+  </Accordion>
+
+  <Accordion title="Embedded wallet not created">
+    **Issue**: User logs in but has no Solana wallet.
+
+    **Solutions**:
+    - Set `createOnLogin: "users-without-wallets"` in config
+    - Check that Solana is enabled in your Privy dashboard settings
+    - Verify `solanaClusters` is configured in PrivyProvider
+    - User may need to logout and login again after config changes
+  </Accordion>
+
+  <Accordion title="Transaction signing fails">
+    **Issue**: `signAndSendTransaction` throws an error.
+
+    **Solutions**:
+    - Ensure transaction has `recentBlockhash` and `feePayer` set
+    - Check wallet has sufficient SOL for transaction and fees
+    - Verify the transaction is valid before signing:
+    ```tsx
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = new PublicKey(wallet.address);
+    ```
+    - Use try-catch to see detailed error messages
+  </Accordion>
+
+  <Accordion title="Cross-chain wallet issues">
+    **Issue**: User has EVM wallet but no Solana wallet.
+
+    **Solutions**:
+    - Use `useSolanaWallets()` specifically for Solana wallets
+    - Check wallet type: `wallet.walletClientType === "privy"`
+    - Embedded wallets support both chains automatically
+    - External wallets (Phantom, etc.) are chain-specific
+  </Accordion>
+
+  <Accordion title="Session expired errors">
+    **Issue**: User gets logged out unexpectedly.
+
+    **Solutions**:
+    - Configure session duration in Privy Dashboard
+    - Implement session refresh logic:
+    ```tsx
+    const { getAccessToken } = usePrivy();
+    const token = await getAccessToken();
+    ```
+    - Check browser's third-party cookie settings
+    - Users in incognito mode may have shorter sessions
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="User Onboarding" icon="user-plus">
+    Guide new users through the wallet creation process:
+    ```tsx
+    const { user } = usePrivy();
+    const { wallets } = useSolanaWallets();
+    
+    const isNewUser = !wallets.length;
+    if (isNewUser) {
+      // Show onboarding tutorial
+    }
+    ```
+  </Card>
+
+  <Card title="Handle Loading States" icon="spinner">
+    Always check ready state before accessing wallets:
+    ```tsx
+    const { ready, authenticated } = usePrivy();
+    
+    if (!ready) {
+      return <Spinner />;
+    }
+    ```
+  </Card>
+
+  <Card title="Error Boundaries" icon="shield-halved">
+    Wrap Privy operations in error boundaries:
+    ```tsx
+    try {
+      await wallet.signAndSendTransaction(tx);
+    } catch (error) {
+      if (error.code === "user_rejected") {
+        // User cancelled
+      }
+    }
+    ```
+  </Card>
+
+  <Card title="Secure API Calls" icon="lock">
+    Use Privy access tokens for backend auth:
+    ```tsx
+    const { getAccessToken } = usePrivy();
+    const token = await getAccessToken();
+    
+    fetch("/api/protected", {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    ```
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Server-Side Auth" icon="server" href="https://docs.privy.io/guide/server">
+    Verify Privy tokens on your backend
+  </Card>
+
+  <Card title="Webhooks" icon="webhook" href="https://docs.privy.io/guide/webhooks">
+    Listen to user events with webhooks
+  </Card>
+
+  <Card title="Cross-Chain Apps" icon="link" href="https://docs.privy.io/guide/cross-chain">
+    Build apps that work on Solana and EVM
+  </Card>
+
+  <Card title="Analytics" icon="chart-line" href="https://dashboard.privy.io">
+    Track user growth in Privy Dashboard
+  </Card>
+</CardGroup>

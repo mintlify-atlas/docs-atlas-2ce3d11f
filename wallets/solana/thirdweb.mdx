@@ -1,0 +1,599 @@
+---
+title: Thirdweb (Solana)
+description: Full-stack web3 development platform with embedded wallets for Solana
+---
+
+## Overview
+
+[Thirdweb](https://thirdweb.com/) is a comprehensive web3 development platform that provides wallet connectivity, embedded wallets, and a complete suite of tools for building Solana applications. It offers a unified SDK that works across Solana and EVM chains.
+
+**Best for**: Full-stack Solana applications that need embedded wallets, account abstraction, and a complete web3 development toolkit.
+
+## Key Features
+
+- **Unified SDK**: Single codebase for Solana and EVM chains
+- **Embedded Wallets**: Email and social login with auto-created Solana wallets
+- **In-App Wallets**: Email OTP, phone number, and social authentication
+- **Smart Wallets**: Account abstraction features (where supported)
+- **Wallet Connections**: Phantom, Solflare, and other Solana wallets
+- **Storage & RPC**: Built-in IPFS storage and RPC infrastructure
+- **TypeScript SDK**: Fully typed SDK with excellent DX
+- **Analytics Dashboard**: Track usage and user metrics
+
+## Installation
+
+Scaffold a new project with Thirdweb:
+
+```bash
+npx create-nextjs-dapp@latest
+```
+
+When prompted:
+1. Choose **Solana** as your blockchain
+2. Select **Thirdweb** as your wallet provider
+
+### Dependencies Installed
+
+The CLI automatically installs:
+
+```json
+{
+  "@solana/web3.js": "^1.98.0",
+  "@solana/wallet-adapter-react": "^0.15.35",
+  "@solana/wallet-adapter-react-ui": "^0.9.35",
+  "@solana/wallet-adapter-wallets": "^0.19.32",
+  "thirdweb": "^5.80.0"
+}
+```
+
+## Configuration
+
+### Get Your Thirdweb Client ID
+
+1. Go to [https://thirdweb.com/dashboard](https://thirdweb.com/dashboard)
+2. Sign up or log in
+3. Navigate to **Settings** → **API Keys**
+4. Create a new API key
+5. Copy the Client ID
+
+### Environment Variables
+
+Add to `.env.local`:
+
+```bash
+# Thirdweb Client ID (required)
+NEXT_PUBLIC_THIRDWEB_CLIENT_ID=your_client_id_here
+
+# Program configuration (optional)
+NEXT_PUBLIC_PROGRAM_ID=YourProgramAddressHere
+```
+
+### Client Setup
+
+The generated `lib/client.ts` creates the Thirdweb client:
+
+```ts
+import { createThirdwebClient } from "thirdweb";
+
+const clientId = process.env.NEXT_PUBLIC_THIRDWEB_CLIENT_ID || "";
+
+if (!clientId) {
+  console.warn(
+    "Missing NEXT_PUBLIC_THIRDWEB_CLIENT_ID. Get one at https://thirdweb.com/dashboard"
+  );
+}
+
+export const client = createThirdwebClient({
+  clientId,
+});
+```
+
+### Provider Setup
+
+The generated `components/Providers.tsx` wraps your app:
+
+```tsx
+"use client";
+
+import { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ThirdwebProvider } from "thirdweb/react";
+import { ThemeProvider } from "next-themes";
+
+import "../lib/client";
+
+const queryClient = new QueryClient();
+
+const Providers = ({ children }: { children: ReactNode }) => {
+  return (
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <ThirdwebProvider>
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      </ThirdwebProvider>
+    </ThemeProvider>
+  );
+};
+
+export { Providers };
+```
+
+## Usage
+
+### Connect Wallet Button
+
+Use Thirdweb's `ConnectButton` component:
+
+```tsx
+"use client";
+
+import { ConnectButton } from "thirdweb/react";
+import { client } from "../lib/client";
+
+const Header = () => {
+  return (
+    <header>
+      <ConnectButton client={client} />
+    </header>
+  );
+};
+
+export { Header };
+```
+
+### Access Connected Account
+
+Use the `useActiveAccount` hook:
+
+```tsx
+"use client";
+
+import { useActiveAccount, useConnect } from "thirdweb/react";
+import { createWallet } from "thirdweb/wallets";
+import { Connection, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { useEffect, useState, useMemo } from "react";
+import { client } from "../lib/client";
+
+const WalletStatus = () => {
+  const account = useActiveAccount();
+  const { connect } = useConnect();
+  const [balance, setBalance] = useState<number | null>(null);
+
+  const connection = useMemo(
+    () => new Connection("https://api.devnet.solana.com"),
+    []
+  );
+
+  useEffect(() => {
+    if (account?.address) {
+      const pubkey = new PublicKey(account.address);
+      connection
+        .getBalance(pubkey)
+        .then((bal) => setBalance(bal / LAMPORTS_PER_SOL))
+        .catch(console.error);
+    }
+  }, [account?.address, connection]);
+
+  const handleConnect = () => {
+    connect(async () => {
+      const wallet = createWallet("app.phantom");
+      await wallet.connect({ client });
+      return wallet;
+    });
+  };
+
+  const connected = !!account;
+
+  if (!connected) {
+    return <button onClick={handleConnect}>Connect Wallet</button>;
+  }
+
+  return (
+    <div>
+      <p>Address: {account.address}</p>
+      <p>Balance: {balance?.toFixed(4)} SOL</p>
+    </div>
+  );
+};
+```
+
+### Sign and Send Transactions
+
+Sign transactions using Thirdweb's wallet adapter:
+
+```tsx
+import { useActiveAccount } from "thirdweb/react";
+import { useSendTransaction } from "thirdweb/react";
+import {
+  Connection,
+  Transaction,
+  SystemProgram,
+  PublicKey,
+  LAMPORTS_PER_SOL,
+} from "@solana/web3.js";
+
+const SendSol = () => {
+  const account = useActiveAccount();
+  const connection = new Connection("https://api.devnet.solana.com");
+
+  const handleSend = async () => {
+    if (!account) return;
+
+    const transaction = new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: new PublicKey(account.address),
+        toPubkey: new PublicKey("recipient address"),
+        lamports: 0.1 * LAMPORTS_PER_SOL,
+      })
+    );
+
+    // Get recent blockhash
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = new PublicKey(account.address);
+
+    // Sign using account's wallet
+    const signedTx = await account.signTransaction(transaction);
+
+    // Send the transaction
+    const signature = await connection.sendRawTransaction(
+      signedTx.serialize()
+    );
+    
+    await connection.confirmTransaction(signature, "confirmed");
+    console.log("Transaction signature:", signature);
+  };
+
+  return <button onClick={handleSend}>Send 0.1 SOL</button>;
+};
+```
+
+### Use In-App Wallets (Email/Social)
+
+Enable email and social authentication:
+
+```tsx
+import { ConnectButton } from "thirdweb/react";
+import { client } from "../lib/client";
+import { inAppWallet } from "thirdweb/wallets";
+
+const LoginButton = () => {
+  const wallets = [
+    inAppWallet({
+      auth: {
+        options: ["email", "google", "discord", "telegram"],
+      },
+    }),
+  ];
+
+  return <ConnectButton client={client} wallets={wallets} />;
+};
+```
+
+### Auto-Connect Wallet
+
+Automatically reconnect on page load:
+
+```tsx
+import { useAutoConnect } from "thirdweb/react";
+import { client } from "../lib/client";
+
+const AutoConnect = () => {
+  useAutoConnect({
+    client,
+    timeout: 10000, // 10 seconds
+  });
+
+  return null;
+};
+```
+
+## Customization
+
+### Configure Wallet Options
+
+Choose which wallets to support:
+
+```tsx
+import { ConnectButton } from "thirdweb/react";
+import { createWallet, inAppWallet } from "thirdweb/wallets";
+import { client } from "../lib/client";
+
+const wallets = [
+  inAppWallet(),
+  createWallet("app.phantom"),
+  createWallet("com.solflare"),
+  createWallet("app.backpack"),
+];
+
+<ConnectButton client={client} wallets={wallets} />;
+```
+
+### Theme Customization
+
+Customize the connect button appearance:
+
+```tsx
+<ConnectButton
+  client={client}
+  theme="dark" // or "light"
+  connectButton={{
+    label: "Sign In",
+    style: {
+      background: "linear-gradient(to right, #6366f1, #8b5cf6)",
+      borderRadius: "8px",
+      fontSize: "14px",
+    },
+  }}
+  connectModal={{
+    size: "wide",
+    title: "Connect to Your dApp",
+    titleIcon: "https://your-app.com/icon.png",
+  }}
+/>
+```
+
+### Configure Chain
+
+Specify Solana network:
+
+```tsx
+import { ConnectButton } from "thirdweb/react";
+import { solana } from "thirdweb/chains";
+import { client } from "../lib/client";
+
+<ConnectButton
+  client={client}
+  chain={solana} // Mainnet
+/>
+```
+
+### Custom RPC Endpoint
+
+Use a custom RPC provider:
+
+```tsx
+import { createThirdwebClient } from "thirdweb";
+
+export const client = createThirdwebClient({
+  clientId,
+  config: {
+    rpc: {
+      solana: "https://your-custom-rpc.com",
+    },
+  },
+});
+```
+
+### Export In-App Wallet
+
+Allow users to export their embedded wallet:
+
+```tsx
+import { useActiveWallet } from "thirdweb/react";
+
+const ExportWallet = () => {
+  const wallet = useActiveWallet();
+
+  const handleExport = async () => {
+    if (!wallet) return;
+    
+    // This shows Thirdweb's export UI
+    await wallet.exportWallet();
+  };
+
+  if (!wallet || wallet.id !== "inApp") {
+    return null;
+  }
+
+  return <button onClick={handleExport}>Export Wallet</button>;
+};
+```
+
+### Configure Email Authentication
+
+Customize email login experience:
+
+```tsx
+import { inAppWallet } from "thirdweb/wallets";
+
+const wallets = [
+  inAppWallet({
+    auth: {
+      options: ["email"],
+      emailSettings: {
+        verification: "otp", // or "link"
+      },
+    },
+    metadata: {
+      name: "Your dApp Name",
+      image: "https://your-app.com/logo.png",
+    },
+  }),
+];
+```
+
+## API Reference
+
+### Official Documentation
+
+- [Thirdweb Docs](https://portal.thirdweb.com/)
+- [Solana SDK Reference](https://portal.thirdweb.com/solana)
+- [React SDK Docs](https://portal.thirdweb.com/react)
+- [TypeScript SDK](https://portal.thirdweb.com/typescript/v5)
+- [Dashboard](https://thirdweb.com/dashboard)
+
+### Key Hooks
+
+- `useActiveAccount()` - Get connected account
+- `useActiveWallet()` - Get connected wallet instance
+- `useConnect()` - Connect wallet programmatically
+- `useDisconnect()` - Disconnect wallet
+- `useAutoConnect()` - Auto-reconnect on load
+- `useSendTransaction()` - Send blockchain transactions
+
+### Wallet Types
+
+- `inAppWallet()` - Email and social login
+- `createWallet("app.phantom")` - Phantom wallet
+- `createWallet("com.solflare")` - Solflare wallet
+- `createWallet("app.backpack")` - Backpack wallet
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Missing Client ID error">
+    **Issue**: "Missing NEXT_PUBLIC_THIRDWEB_CLIENT_ID" warning.
+
+    **Solutions**:
+    - Create `.env.local` in project root
+    - Add `NEXT_PUBLIC_THIRDWEB_CLIENT_ID=your_client_id`
+    - Get Client ID from [Thirdweb Dashboard](https://thirdweb.com/dashboard)
+    - Restart dev server after adding the variable
+  </Accordion>
+
+  <Accordion title="Connect button not working">
+    **Issue**: Clicking ConnectButton does nothing.
+
+    **Solutions**:
+    - Verify `ThirdwebProvider` wraps your app
+    - Check that client is properly imported:
+    ```tsx
+    import { client } from "../lib/client";
+    <ConnectButton client={client} />
+    ```
+    - Check browser console for errors
+    - Ensure Client ID is valid in dashboard
+  </Accordion>
+
+  <Accordion title="In-app wallet not creating">
+    **Issue**: Email login doesn't create a wallet.
+
+    **Solutions**:
+    - Ensure `inAppWallet()` is in wallets array:
+    ```tsx
+    const wallets = [inAppWallet()];
+    <ConnectButton client={client} wallets={wallets} />
+    ```
+    - Check email authentication is enabled in dashboard
+    - Verify auth options are configured correctly
+    - Check spam folder for verification emails
+  </Accordion>
+
+  <Accordion title="Transaction signing fails">
+    **Issue**: `signTransaction` throws an error.
+
+    **Solutions**:
+    - Ensure account exists before signing:
+    ```tsx
+    const account = useActiveAccount();
+    if (!account) {
+      throw new Error("No account connected");
+    }
+    ```
+    - Set transaction fields properly:
+    ```tsx
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = new PublicKey(account.address);
+    ```
+    - Check wallet has sufficient SOL for fees
+  </Accordion>
+
+  <Accordion title="Auto-connect not working">
+    **Issue**: Wallet doesn't reconnect after refresh.
+
+    **Solutions**:
+    - Ensure `useAutoConnect` hook is used:
+    ```tsx
+    useAutoConnect({ client });
+    ```
+    - Check browser's localStorage isn't blocked
+    - Increase timeout if needed:
+    ```tsx
+    useAutoConnect({ client, timeout: 15000 });
+    ```
+    - Some wallets require manual reconnection
+  </Accordion>
+
+  <Accordion title="Wrong network/chain">
+    **Issue**: Connected to wrong Solana cluster.
+
+    **Solutions**:
+    - Specify chain explicitly:
+    ```tsx
+    import { solana } from "thirdweb/chains";
+    <ConnectButton client={client} chain={solana} />
+    ```
+    - Use custom RPC for specific network
+    - Check wallet's network settings
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Check Account State" icon="user-check">
+    Always verify account exists before operations:
+    ```tsx
+    const account = useActiveAccount();
+    
+    if (!account) {
+      return <ConnectButton client={client} />;
+    }
+    ```
+  </Card>
+
+  <Card title="Error Handling" icon="shield-halved">
+    Wrap wallet operations in try-catch:
+    ```tsx
+    try {
+      const tx = await account.signTransaction(...);
+    } catch (error) {
+      console.error("Failed:", error);
+      // Show user-friendly message
+    }
+    ```
+  </Card>
+
+  <Card title="Loading States" icon="spinner">
+    Show loading UI during connection:
+    ```tsx
+    const account = useActiveAccount();
+    const wallet = useActiveWallet();
+    
+    if (wallet && !account) {
+      return <Spinner />;
+    }
+    ```
+  </Card>
+
+  <Card title="TypeScript Types" icon="code">
+    Leverage full TypeScript support:
+    ```tsx
+    import type { Account, Wallet } from "thirdweb/wallets";
+    
+    const account: Account | undefined = useActiveAccount();
+    ```
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Storage SDK" icon="database" href="https://portal.thirdweb.com/storage">
+    Upload files to IPFS with Thirdweb Storage
+  </Card>
+
+  <Card title="RPC Edge" icon="bolt" href="https://portal.thirdweb.com/infrastructure/rpc-edge">
+    Use Thirdweb's high-performance RPC
+  </Card>
+
+  <Card title="Analytics" icon="chart-line" href="https://thirdweb.com/dashboard/analytics">
+    Track wallet connections and usage
+  </Card>
+
+  <Card title="Templates" icon="layer-group" href="https://thirdweb.com/templates">
+    Explore more Thirdweb starter templates
+  </Card>
+</CardGroup>

@@ -1,0 +1,383 @@
+---
+title: Environment Variables
+description: Configuring API keys and contract addresses for your dApp
+---
+
+Every generated project includes a `.env.example` file with provider-specific environment variables. These variables are required to run your dApp.
+
+<Warning>
+Never commit `.env` or `.env.local` files to version control. They contain sensitive API keys and are already included in `.gitignore`.
+</Warning>
+
+## Setup Process
+
+<Steps>
+
+<Step title="Copy the example file">
+Create your local environment file:
+
+```bash
+cp .env.example .env.local
+```
+
+<Note>
+Next.js automatically loads `.env.local` in all environments. Use `.env.production` for production-specific values.
+</Note>
+</Step>
+
+<Step title="Fill in required values">
+Open `.env.local` and add your API keys and contract addresses. See provider-specific sections below.
+</Step>
+
+<Step title="Restart dev server">
+Changes to environment variables require restarting the development server:
+
+```bash
+npm run dev  # or yarn dev, pnpm dev, bun dev
+```
+</Step>
+
+</Steps>
+
+## Provider-Specific Variables
+
+### RainbowKit & ConnectKit
+
+Requires a WalletConnect Project ID:
+
+```bash .env.local
+# WalletConnect Project ID
+# 1. Go to https://cloud.walletconnect.com
+# 2. Sign up or log in
+# 3. Create a new project
+# 4. Copy the Project ID
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id_here
+
+# Contract configuration
+# Your deployed smart contract address
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
+```
+
+<Accordion title="Getting a WalletConnect Project ID">
+1. Visit [cloud.walletconnect.com](https://cloud.walletconnect.com)
+2. Create an account or sign in
+3. Click "Create New Project"
+4. Enter your project name and URL
+5. Copy the Project ID from the dashboard
+
+<Info>
+WalletConnect is free for most use cases. See their [pricing page](https://cloud.walletconnect.com/pricing) for limits.
+</Info>
+</Accordion>
+
+### Privy
+
+Requires a Privy App ID:
+
+```bash .env.local
+# Privy App ID
+# 1. Go to https://dashboard.privy.io
+# 2. Sign up or log in
+# 3. Create a new app
+# 4. Copy the App ID from Settings
+NEXT_PUBLIC_PRIVY_APP_ID=your_app_id_here
+
+# Contract configuration
+# Your deployed smart contract or program address
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x...  # EVM
+# or
+NEXT_PUBLIC_PROGRAM_ID=...          # Solana
+```
+
+<Accordion title="Getting a Privy App ID">
+1. Visit [dashboard.privy.io](https://dashboard.privy.io)
+2. Create an account
+3. Click "Create App"
+4. Go to Settings → Basics
+5. Copy your App ID
+6. Configure allowed domains in Settings → Login Methods
+
+<Info>
+Privy offers a free tier with up to 1,000 monthly active users. Perfect for development and small projects.
+</Info>
+</Accordion>
+
+### Dynamic
+
+Requires a Dynamic Environment ID:
+
+```bash .env.local
+# Dynamic Environment ID
+# 1. Go to https://app.dynamic.xyz
+# 2. Sign up or log in
+# 3. Create a new project
+# 4. Go to Developer > SDK & API Keys
+# 5. Copy the Environment ID
+NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID=your_environment_id_here
+
+# Contract configuration
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x...  # EVM
+# or
+NEXT_PUBLIC_PROGRAM_ID=...          # Solana
+```
+
+<Accordion title="Getting a Dynamic Environment ID">
+1. Visit [app.dynamic.xyz](https://app.dynamic.xyz)
+2. Sign up and create a project
+3. Navigate to Developer → SDK & API Keys
+4. Copy your Environment ID
+5. Configure chains and login methods in the dashboard
+
+<Warning>
+Dynamic requires configuring allowed origins in the dashboard. Add `http://localhost:3000` for development.
+</Warning>
+</Accordion>
+
+### Reown (AppKit)
+
+Requires a Reown Project ID:
+
+```bash .env.local
+# Reown (WalletConnect) Project ID
+# 1. Go to https://cloud.reown.com
+# 2. Sign up or log in
+# 3. Create a new project
+# 4. Copy the Project ID
+NEXT_PUBLIC_REOWN_PROJECT_ID=your_project_id_here
+
+# Contract configuration
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x...  # EVM
+# or
+NEXT_PUBLIC_PROGRAM_ID=...          # Solana
+```
+
+<Note>
+Reown (formerly Web3Modal) uses WalletConnect's infrastructure. The setup is identical to WalletConnect.
+</Note>
+
+### Thirdweb
+
+Requires a Thirdweb Client ID:
+
+```bash .env.local
+# Thirdweb Client ID
+# 1. Go to https://thirdweb.com/dashboard
+# 2. Sign up or log in
+# 3. Go to Settings > API Keys
+# 4. Create a new API key
+# 5. Copy the Client ID
+NEXT_PUBLIC_THIRDWEB_CLIENT_ID=your_client_id_here
+
+# Contract configuration
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x...  # EVM
+# or
+NEXT_PUBLIC_PROGRAM_ID=...          # Solana
+```
+
+<Accordion title="Getting a Thirdweb Client ID">
+1. Visit [thirdweb.com/dashboard](https://thirdweb.com/dashboard)
+2. Create an account or sign in
+3. Go to Settings → API Keys
+4. Click "Create API Key"
+5. Name your key and select services
+6. Copy the Client ID (not the Secret Key)
+
+<Info>
+Thirdweb Client IDs are safe to expose in client-side code. Never expose Secret Keys.
+</Info>
+</Accordion>
+
+### GetPara (Capsule)
+
+Requires a GetPara API Key:
+
+```bash .env.local
+# GetPara (Capsule) API Key
+# 1. Go to https://developer.getpara.com
+# 2. Sign up or log in
+# 3. Create a new project
+# 4. Copy the API Key
+NEXT_PUBLIC_PARA_API_KEY=your_api_key_here
+
+# Contract configuration
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
+```
+
+### Solana Wallet Adapter
+
+No API key required:
+
+```bash .env.local
+# Solana Configuration
+# No API key required for standard wallet adapter
+
+# Program configuration
+# Your deployed program address
+NEXT_PUBLIC_PROGRAM_ID=your_program_id_here
+```
+
+<Info>
+Solana Wallet Adapter works out of the box without any API keys. Just add your program address when you're ready to interact with on-chain programs.
+</Info>
+
+## Contract/Program Addresses
+
+All templates include placeholders for your smart contract or program address:
+
+### EVM Chains
+
+```bash .env.local
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x1234567890123456789012345678901234567890
+```
+
+<Note>
+EVM addresses are 42 characters long (including `0x` prefix) and are case-insensitive.
+</Note>
+
+### Solana
+
+```bash .env.local
+NEXT_PUBLIC_PROGRAM_ID=11111111111111111111111111111111
+```
+
+<Note>
+Solana program IDs are Base58-encoded strings, typically 32-44 characters long.
+</Note>
+
+## Environment Variable Naming
+
+<Warning>
+Only variables prefixed with `NEXT_PUBLIC_` are exposed to the browser. Variables without this prefix are only available server-side.
+</Warning>
+
+### Good: Client-side (Public)
+
+```bash
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
+NEXT_PUBLIC_THIRDWEB_CLIENT_ID=...
+```
+
+These are safe to expose and required for client-side wallet connections.
+
+### Bad: Server-side (Private)
+
+```bash
+# ❌ Don't use these for wallet SDKs
+CONTRACT_ADDRESS=0x...
+THIRDWEB_SECRET_KEY=...
+```
+
+Server-side variables won't work for client-side blockchain interactions.
+
+## Development vs Production
+
+Use different environment files for each environment:
+
+<Tabs>
+  <Tab title="Development">
+    ```bash .env.local
+    # Used in development (npm run dev)
+    NEXT_PUBLIC_CONTRACT_ADDRESS=0x...  # Testnet address
+    NEXT_PUBLIC_THIRDWEB_CLIENT_ID=...  # Dev API key
+    ```
+  </Tab>
+  <Tab title="Production">
+    ```bash .env.production
+    # Used in production (npm run build && npm start)
+    NEXT_PUBLIC_CONTRACT_ADDRESS=0x...  # Mainnet address
+    NEXT_PUBLIC_THIRDWEB_CLIENT_ID=...  # Production API key
+    ```
+  </Tab>
+</Tabs>
+
+## Deployment Platforms
+
+### Vercel
+
+Add environment variables in the Vercel dashboard:
+
+1. Go to your project settings
+2. Navigate to "Environment Variables"
+3. Add each variable with appropriate environment (Production/Preview/Development)
+
+<Accordion title="Vercel environment variables screenshot guide">
+1. Project Settings → Environment Variables
+2. Add variable name (e.g., `NEXT_PUBLIC_THIRDWEB_CLIENT_ID`)
+3. Add value
+4. Select environments: Production, Preview, Development
+5. Click "Save"
+
+Variables are encrypted and injected at build time.
+</Accordion>
+
+### Other Platforms
+
+Most deployment platforms (Netlify, Railway, Render) have similar environment variable configuration in their dashboards.
+
+<Card title="Deployment Guide" icon="rocket" href="/guides/deployment">
+Learn how to deploy your dApp with environment variables configured
+</Card>
+
+## Troubleshooting
+
+<AccordionGroup>
+
+<Accordion title="Environment variables are undefined">
+**Symptoms:** Variables show as `undefined` in your code
+
+**Solutions:**
+1. Ensure variables are prefixed with `NEXT_PUBLIC_`
+2. Restart your dev server after adding variables
+3. Check for typos in variable names
+4. Verify `.env.local` is in the project root
+</Accordion>
+
+<Accordion title="Wallet connection fails">
+**Symptoms:** "Invalid API key" or "Project ID required" errors
+
+**Solutions:**
+1. Verify you copied the entire API key/Project ID
+2. Check for extra spaces or newlines in `.env.local`
+3. Ensure the API key is for the correct environment (dev vs prod)
+4. Verify the provider dashboard shows your domain as allowed
+</Accordion>
+
+<Accordion title="Works locally but not in production">
+**Symptoms:** dApp works in development but fails when deployed
+
+**Solutions:**
+1. Verify environment variables are set in your deployment platform
+2. Use production API keys in production environment
+3. Check that your production domain is allowed in provider dashboard
+4. Redeploy after adding environment variables
+</Accordion>
+
+</AccordionGroup>
+
+## Best Practices
+
+<CardGroup cols={2}>
+
+<Card title="Use .env.local" icon="lock">
+Store secrets in `.env.local`, never in `.env` or code
+</Card>
+
+<Card title="Document requirements" icon="book">
+Keep `.env.example` updated with all required variables
+</Card>
+
+<Card title="Separate environments" icon="layer-group">
+Use different API keys for dev, staging, and production
+</Card>
+
+<Card title="Rotate keys regularly" icon="rotate">
+Change API keys periodically and after team changes
+</Card>
+
+</CardGroup>
+
+## Next Steps
+
+<Card title="Deploy Your dApp" icon="rocket" href="/guides/deployment">
+Learn how to deploy your configured dApp to production
+</Card>
