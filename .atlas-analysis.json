@@ -1,0 +1,98 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "create-nextjs-dapp",
+  "projectDescription": "CLI tool to scaffold Next.js dApps with your preferred wallet provider and blockchain",
+  "theme": "palm",
+  "primaryColor": "#848c8e",
+  "lightColor": "#11161e",
+  "darkColor": "#cfd0d2",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "CLI Reference",
+            "pages": [
+              "cli/commands",
+              "cli/options",
+              "cli/examples"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/package-managers",
+              "guides/project-structure",
+              "guides/environment-variables",
+              "guides/deployment"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "config/chains",
+              "config/wallet-providers"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Wallet Providers",
+        "groups": [
+          {
+            "group": "EVM Providers",
+            "pages": [
+              "wallets/evm/rainbowkit",
+              "wallets/evm/connectkit",
+              "wallets/evm/privy",
+              "wallets/evm/dynamic",
+              "wallets/evm/reown",
+              "wallets/evm/thirdweb",
+              "wallets/evm/getpara"
+            ]
+          },
+          {
+            "group": "Solana Providers",
+            "pages": [
+              "wallets/solana/wallet-adapter",
+              "wallets/solana/privy",
+              "wallets/solana/dynamic",
+              "wallets/solana/reown",
+              "wallets/solana/thirdweb"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Interactive CLI with beautiful prompts",
+    "Support for EVM and Solana blockchains",
+    "8 pre-configured wallet providers",
+    "TypeScript + Next.js 14+ with App Router",
+    "Automatic package manager detection",
+    "Ready-to-use contract interaction hooks"
+  ],
+  "publicApiSurface": [
+    "create-nextjs-dapp [project-name]",
+    "--chain, -c <chain>",
+    "--wallet, -w <provider>",
+    "--yes, -y",
+    "--git",
+    "--install",
+    "--use-npm",
+    "--use-yarn",
+    "--use-pnpm",
+    "--use-bun",
+    "--help, -h",
+    "--version, -v"
+  ]
+}
